@@ -1,0 +1,78 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"jsonFile" : "directory-.-Debug-d0094a50bb2071803777.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.15"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "Cyfon_RPC",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 0,
+					"id" : "cyfon_rpc_lib::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-cyfon_rpc_lib-Debug-0f303bec885a961cee3a.json",
+					"name" : "cyfon_rpc_lib",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "echo_client::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-echo_client-Debug-553346e06ca6b388d61c.json",
+					"name" : "echo_client",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "echo_server::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-echo_server-Debug-85115faf254f92c8b599.json",
+					"name" : "echo_server",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "D:/cppsoft/Cyfon_RPC/out/build/x64-debug",
+		"source" : "D:/cppsoft/Cyfon_RPC"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 8
+	}
+}
