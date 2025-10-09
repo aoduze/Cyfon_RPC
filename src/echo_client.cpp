@@ -13,7 +13,7 @@ int main() {
 
 		// 解析端口
 		boost::asio::ip::tcp::resolver resolver(io_context);
-		auto endpoints = resolver.resolve("localhost", "8888");
+		auto endpoints = resolver.resolve("lo.calhost", "8888");
 
 		// 创建并连接套接字
 		boost::asio::ip::tcp::socket socket(io_context);

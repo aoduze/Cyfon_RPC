@@ -1,0 +1,14 @@
+# Visual Studio user-specific files and caches
+.vs/
+*.suo
+*.user
+
+# Build results
+[Bb]in/
+[Oo]bj/
+out/
+
+# Other common files to ignore
+*.pdb
+*.dll
+*.exe

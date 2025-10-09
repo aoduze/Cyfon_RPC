@@ -23,7 +23,7 @@ add_library(cyfon_rpc_lib STATIC
     src/Cyfon_RPC.cpp
     src/Cyfon_RPC.h
     ${PROTO_SRCS}
-)
+ "src/buffer.h" "src/buffer.cpp")
 
 # 為庫添加包含目錄
 target_include_directories(cyfon_rpc_lib PUBLIC
@@ -39,8 +39,8 @@ target_link_libraries(cyfon_rpc_lib PUBLIC
 )
 
 # --- 生成可执行文件 ---
-add_executable(echo_server src/echo_server.cpp)
-add_executable(echo_client src/echo_client.cpp)
+add_executable(echo_server src/echo_server.cpp "src/buffer.h" "src/buffer.cpp")
+add_executable(echo_client src/echo_client.cpp "src/buffer.h" "src/buffer.cpp")
 
 # --- 【IntelliSense 增強設定】 ---
 # 雖然這些路徑可以透過 cyfon_rpc_lib 傳遞，但明確地再次為執行檔指定，
