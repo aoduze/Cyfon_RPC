@@ -1,235 +1,177 @@
-
-
----------------------------------------------------------------
-#pragma once
-
-#include <vector>
-#include <string>
-#include <string_view>
-#include <algorithm>
+#include <iostream>
 #include <cassert>
-#include <cstddef> // For std::byte
-#include <cstdint>
-#include <concepts> // For std::integral
-#include <ranges>   // For std::ranges::copy
-#include <span>
+#include "buffer.h"
 
-#include <boost/asio.hpp>
+// 為了方便，我們使用 cyfon_rpc 命名空間
+using namespace cyfon_rpc;
 
-// C++20 bit header for endian conversions
-#if __cplusplus >= 202002L && __has_include(<bit>)
-#include <bit>
-#endif
+// 測試函式宣告
+void testInitialState();
+void testAppendAndRetrieve();
+void testBufferGrowth();
+void testBufferRecycle();
+void testIntegerOperations();
+void testPrepend();
+void testFindCRLF();
+void testShrink();
 
-// --- Network Byte Order Conversion Helpers ---
-// Use std::byteswap from C++23 if available, otherwise fallback.
-// This is cleaner than the manual implementation.
-template<std::integral T>
-T hostToNetwork(T value) noexcept {
-#if __cplusplus >= 202302L
-    if constexpr (std::endian::native == std::endian::little) {
-        return std::byteswap(value);
-    }
-#endif
-    // Fallback for older standards or big-endian machines
-    if constexpr (sizeof(T) == 8) {
-        return static_cast<T>(htonll(static_cast<uint64_t>(value))); // Assuming htonll is available or defined
-    }
-    else if constexpr (sizeof(T) == 4) {
-        return static_cast<T>(htonl(static_cast<uint32_t>(value)));
-    }
-    else if constexpr (sizeof(T) == 2) {
-        return static_cast<T>(htons(static_cast<uint16_t>(value)));
-    }
-    return value; // 1-byte values need no conversion
+int main() {
+    std::cout << "Starting Buffer tests..." << std::endl;
+
+    testInitialState();
+    testAppendAndRetrieve();
+    testBufferGrowth();
+    testBufferRecycle();
+    testIntegerOperations();
+    testPrepend();
+    testFindCRLF();
+    testShrink();
+
+    std::cout << "\nAll Buffer tests passed successfully!" << std::endl;
+
+    return 0;
 }
 
-template<std::integral T>
-T networkToHost(T value) noexcept {
-    return hostToNetwork(value); // Byte swapping is symmetric
+// 測試1：檢查初始狀態是否正確
+void testInitialState() {
+    std::cout << "--- Running testInitialState ---" << std::endl;
+    Buffer buf;
+    assert(buf.readableBytes() == 0);
+    assert(buf.writableBytes() == Buffer::kInitialSize);
+    assert(buf.prependableBytes() == Buffer::kCheapPrepend);
+    std::cout << "testInitialState PASSED" << std::endl;
 }
 
+// 測試2：測試基本的 append 和 retrieve 功能
+void testAppendAndRetrieve() {
+    std::cout << "--- Running testAppendAndRetrieve ---" << std::endl;
+    Buffer buf;
+    std::string_view str = "hello world";
+    buf.append({ reinterpret_cast<const std::byte*>(str.data()), str.size() });
 
-namespace cyfon_rpc {
+    assert(buf.readableBytes() == str.size());
+    assert(buf.writableBytes() == Buffer::kInitialSize - str.size());
+    assert(buf.toStringView() == str);
 
-    // Buffer Layout:
-    // +-------------------+------------------+------------------+
-    // | prependable bytes |  readable bytes  |  writable bytes  |
-    // +-------------------+------------------+------------------+
-    // 0      <=      readerIndex   <=   writerIndex    <=     size
+    std::string retrieved_str = buf.retrieveAsString(5);
+    assert(retrieved_str == "hello");
+    assert(buf.readableBytes() == str.size() - 5);
+    assert(buf.toStringView() == " world");
 
-    class Buffer {
-    public:
-        static constexpr size_t kCheapPrepend = 8;
-        static constexpr size_t kInitialSize = 1024;
+    buf.retrieveAll();
+    assert(buf.readableBytes() == 0);
+    assert(buf.writableBytes() == Buffer::kInitialSize); // retrieveAll 應該重置指標
+    assert(buf.prependableBytes() == Buffer::kCheapPrepend);
 
-        explicit Buffer(size_t initialSize = kInitialSize)
-            : buffer_(kCheapPrepend + initialSize),
-            readerIndex_(kCheapPrepend),
-            writerIndex_(kCheapPrepend) {
-        }
+    std::cout << "testAppendAndRetrieve PASSED" << std::endl;
+}
 
-        void swap(Buffer& rhs) noexcept {
-            buffer_.swap(rhs.buffer_);
-            std::swap(readerIndex_, rhs.readerIndex_);
-            std::swap(writerIndex_, rhs.writerIndex_);
-        }
+// 測試3：測試緩衝區是否會自動增長
+void testBufferGrowth() {
+    std::cout << "--- Running testBufferGrowth ---" << std::endl;
+    Buffer buf;
+    std::string long_str(1200, 'x');
+    buf.append({ reinterpret_cast<const std::byte*>(long_str.data()), long_str.size() });
 
-        // --- Capacity Information ---
-        [[nodiscard]] size_t readableBytes() const noexcept { return writerIndex_ - readerIndex_; }
-        [[nodiscard]] size_t writableBytes() const noexcept { return buffer_.size() - writerIndex_; }
-        [[nodiscard]] size_t prependableBytes() const noexcept { return readerIndex_; }
-        [[nodiscard]] size_t internalCapacity() const noexcept { return buffer_.capacity(); }
+    assert(buf.readableBytes() == 1200);
+    // 檢查 writableBytes 是否大於 0，表示已經擴容
+    assert(buf.writableBytes() > 0);
+    assert(buf.toStringView() == long_str);
+    std::cout << "testBufferGrowth PASSED" << std::endl;
+}
 
-        // --- Data Views (using std::span for safety) ---
-        [[nodiscard]] std::span<const std::byte> readableBytesView() const noexcept {
-            return { buffer_.data() + readerIndex_, readableBytes() };
-        }
+// 測試4：測試內部空間的回收利用 (makeSpace 的 else 分支)
+void testBufferRecycle() {
+    std::cout << "--- Running testBufferRecycle ---" << std::endl;
+    Buffer buf;
+    std::string str(200, 'x');
+    buf.append({ reinterpret_cast<const std::byte*>(str.data()), str.size() });
 
-        [[nodiscard]] std::span<std::byte> writableBytesView() noexcept {
-            return { buffer_.data() + writerIndex_, writableBytes() };
-        }
+    buf.retrieve(100); // 釋放前面 100 位元組
+    assert(buf.prependableBytes() == Buffer::kCheapPrepend + 100);
 
-        // --- Data Retrieval ---
-        void retrieve(size_t len) {
-            assert(len <= readableBytes());
-            if (len < readableBytes()) {
-                readerIndex_ += len;
-            }
-            else {
-                retrieveAll();
-            }
-        }
+    std::string str2(1000, 'y');
+    buf.append({ reinterpret_cast<const std::byte*>(str2.data()), str2.size() });
 
-        void retrieveUntil(const char* end) {
-            const char* start = reinterpret_cast<const char*>(peek());
-            assert(start <= end);
-            assert(end <= reinterpret_cast<const char*>(beginWrite()));
-            retrieve(end - start);
-        }
+    assert(buf.readableBytes() == 100 + 1000);
+    assert(buf.prependableBytes() == Buffer::kCheapPrepend); // 空間被回收，指標回到初始位置
 
-        void retrieveAll() noexcept {
-            readerIndex_ = kCheapPrepend;
-            writerIndex_ = kCheapPrepend;
-        }
+    std::string expected_str = std::string(100, 'x') + std::string(1000, 'y');
+    assert(buf.retrieveAllAsString() == expected_str);
 
-        template<std::integral IntType>
-        void retrieveInt() {
-            retrieve(sizeof(IntType));
-        }
+    std::cout << "testBufferRecycle PASSED" << std::endl;
+}
 
-        [[nodiscard]] std::string retrieveAsString(size_t len) {
-            assert(len <= readableBytes());
-            const char* data_ptr = reinterpret_cast<const char*>(peek());
-            std::string result(data_ptr, len);
-            retrieve(len);
-            return result;
-        }
+// 測試5：測試整數的讀寫
+void testIntegerOperations() {
+    std::cout << "--- Running testIntegerOperations ---" << std::endl;
+    Buffer buf;
+    int64_t val64 = 0x123456789ABCDEF0;
+    int32_t val32 = 12345;
 
-        [[nodiscard]] std::string retrieveAllAsString() {
-            return retrieveAsString(readableBytes());
-        }
+    buf.appendInt(val64);
+    buf.appendInt(val32);
 
-        // --- Data Appending ---
-        void append(std::span<const std::byte> data) {
-            ensureWritableBytes(data.size());
-            std::ranges::copy(data, writableBytesView().begin());
-            hasWritten(data.size());
-        }
+    assert(buf.readableBytes() == sizeof(val64) + sizeof(val32));
+    assert(buf.peekInt<int64_t>() == val64);
 
-        // Convenience overload for string-like data
-        void append(const std::string_view str) {
-            append(std::as_bytes(std::span{ str }));
-        }
+    assert(buf.readInt<int64_t>() == val64);
+    assert(buf.readInt<int32_t>() == val32);
+    assert(buf.readableBytes() == 0);
 
-        template<std::integral IntType>
-        void appendInt(IntType value) {
-            IntType network_value = hostToNetwork(value);
-            append(std::as_bytes(std::span{ &network_value, 1 }));
-        }
+    std::cout << "testIntegerOperations PASSED" << std::endl;
+}
 
-        // --- Data Prepending ---
-        void prepend(std::span<const std::byte> data) {
-            assert(data.size() <= prependableBytes());
-            readerIndex_ -= data.size();
-            std::ranges::copy(data, buffer_.data() + readerIndex_);
-        }
+// 測試6：測試 prepend 功能
+void testPrepend() {
+    std::cout << "--- Running testPrepend ---" << std::endl;
+    Buffer buf;
+    std::string_view content = "data";
+    buf.append({ reinterpret_cast<const std::byte*>(content.data()), content.size() });
 
-        template<std::integral IntType>
-        void prependInt(IntType value) {
-            IntType network_value = hostToNetwork(value);
-            prepend(std::as_bytes(std::span{ &network_value, 1 }));
-        }
+    int32_t header = 4; // 假設是長度標頭
+    buf.prependInt(header);
 
-        // --- Peeking and Reading Data ---
-        template<std::integral IntType>
-        [[nodiscard]] IntType peekInt() const {
-            assert(readableBytes() >= sizeof(IntType));
-            IntType network_value = 0;
-            auto view = readableBytesView().first<sizeof(IntType)>();
-            std::copy(view.begin(), view.end(), std::as_writable_bytes(std::span{ &network_value, 1 }).begin());
-            return networkToHost(network_value);
-        }
+    assert(buf.readableBytes() == sizeof(header) + content.size());
+    assert(buf.prependableBytes() == Buffer::kCheapPrepend - sizeof(header));
+    assert(buf.readInt<int32_t>() == header);
+    assert(buf.retrieveAllAsString() == content);
 
-        template<std::integral IntType>
-        [[nodiscard]] IntType readInt() {
-            IntType result = peekInt<IntType>();
-            retrieve(sizeof(IntType));
-            return result;
-        }
+    std::cout << "testPrepend PASSED" << std::endl;
+}
 
-        [[nodiscard]] std::string_view toStringView() const {
-            const char* data = reinterpret_cast<const char*>(peek());
-            return { data, readableBytes() };
-        }
+// 測試7：測試尋找 CRLF
+void testFindCRLF() {
+    std::cout << "--- Running testFindCRLF ---" << std::endl;
+    Buffer buf;
+    std::string_view data = "hello\r\nworld";
+    buf.append({ reinterpret_cast<const std::byte*>(data.data()), data.size() });
 
-        // --- Socket Operations ---
-        size_t readSock(boost::asio::ip::tcp::socket& sock, boost::system::error_code& ec) {
-            auto writable_view = writableBytesView();
-            // Boost.Asio can work directly with std::byte spans
-            size_t n = sock.read_some(boost::asio::buffer(writable_view.data(), writable_view.size()), ec);
-            if (!ec && n > 0) {
-                hasWritten(n);
-            }
-            return n;
-        }
+    const char* crlf = buf.findCRLF();
+    assert(crlf != nullptr);
+    assert(std::string_view(buf.peek(), crlf - buf.peek()) == "hello");
 
-    private:
-        // Internal pointer access (for legacy compatibility if needed)
-        [[nodiscard]] const std::byte* peek() const noexcept { return buffer_.data() + readerIndex_; }
-        [[nodiscard]] std::byte* beginWrite() noexcept { return buffer_.data() + writerIndex_; }
+    buf.retrieveAll();
+    buf.append({ reinterpret_cast<const std::byte*>("no crlf"), 7 });
+    assert(buf.findCRLF() == nullptr);
+    std::cout << "testFindCRLF PASSED" << std::endl;
+}
 
-        void hasWritten(size_t len) noexcept {
-            assert(len <= writableBytes());
-            writerIndex_ += len;
-        }
+// 測試8：測試 shrink 功能
+void testShrink() {
+    std::cout << "--- Running testShrink ---" << std::endl;
+    Buffer buf(20); // 使用小容量方便測試
+    std::string data(10, 'z');
+    buf.append({ reinterpret_cast<const std::byte*>(data.data()), data.size() });
+    buf.retrieve(5);
 
-        void ensureWritableBytes(size_t len) {
-            if (writableBytes() < len) {
-                makeSpace(len);
-            }
-            assert(writableBytes() >= len);
-        }
+    buf.shrink();
 
-        void makeSpace(size_t len) {
-            if (writableBytes() + prependableBytes() < len + kCheapPrepend) {
-                // Not enough space even if we move data, so resize.
-                buffer_.resize(writerIndex_ + len);
-            }
-            else {
-                // Move readable data to the front to create writable space.
-                size_t readable = readableBytes();
-                std::move(buffer_.begin() + readerIndex_,
-                    buffer_.begin() + writerIndex_,
-                    buffer_.begin() + kCheapPrepend);
-                readerIndex_ = kCheapPrepend;
-                writerIndex_ = readerIndex_ + readable;
-            }
-        }
-
-        std::vector<std::byte> buffer_;
-        size_t readerIndex_;
-        size_t writerIndex_;
-    };
-
-} // namespace cyfon_rpc
+    // shrink 後，prependable 空間應該消失
+    assert(buf.prependableBytes() == 0);
+    assert(buf.readableBytes() == 5);
+    // 內部容量應該也縮小了
+    assert(buf.internalCapacity() == 5);
+    assert(buf.toStringView() == "zzzzz");
+    std::cout << "testShrink PASSED" << std::endl;
+}

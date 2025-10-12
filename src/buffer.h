@@ -165,7 +165,7 @@ namespace cyfon_rpc {
 
 		// 可读数据(string_view格式)
 		[[nodiscard]] std::string_view toStringView() const {
-			return std::string_view(peek(), static_cast<int>(readableBytes()));
+			return std::string_view(peek(), readableBytes());
 		}
 
 		// std::byte版本的append
@@ -273,7 +273,12 @@ namespace cyfon_rpc {
 		void makeSpace(size_t len) {
 			if (writableBytes() + prependableBytes() < len + kCheapPrepend) {
 				size_t readable = readableBytes();
-				std::vector<std::byte> new_buffer(kCheapPrepend + readable + len);
+
+				size_t old_size = buffer_.size();
+				size_t new_size_needed = kCheapPrepend + readable + len;
+				size_t new_size = std::max(old_size * 2, new_size_needed);
+
+				std::vector<std::byte> new_buffer(new_size); 
 				std::copy(readableBytesView().begin(), readableBytesView().end(), new_buffer.begin() + kCheapPrepend);
 				buffer_.swap(new_buffer);
 				readerIndex_ = kCheapPrepend;
@@ -289,7 +294,6 @@ namespace cyfon_rpc {
 			}
 			assert(writableBytes() >= len);
 		}
-
 		std::vector<std::byte> buffer_;
 		size_t readerIndex_;
 		size_t writerIndex_;
