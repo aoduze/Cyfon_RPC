@@ -12,6 +12,15 @@
 #include <cstddef>
 #include <concepts>
 
+
+/*
+* 
+* 
+ fixme: 这里面参杂了非常多令人恶心的强制转换，请后续更新
+*
+*
+*/
+
 #if __cplusplus >= 202002L && __has_include(<bit>)
 #include <bit>
 #endif
@@ -24,7 +33,7 @@ T hostToNetwork(T value) noexcept {
 	}
 #endif
 	if constexpr (sizeof(T) == 8) {
-		return static_cast<T>(htonll(static_cast<uint64_t>(value))); // Assuming htonll is available or defined
+		return static_cast<T>(htonll(static_cast<uint64_t>(value)));
 	}
 	else if constexpr (sizeof(T) == 4) {
 		return static_cast<T>(htonl(static_cast<uint32_t>(value)));
@@ -77,7 +86,7 @@ namespace cyfon_rpc {
 		}
 
 		// 返回可读数据的起始地址
-		[[nodiscard]] const char* peek() const noexcept { return begin() + readerIndex_; }
+		[[nodiscard]] const char* peek() const noexcept { return reinterpret_cast<const char*>(begin() + readerIndex_); }
 
 		// 在缓冲区中查找"\r\n"
 		const char* findCRLF() const {
@@ -159,12 +168,14 @@ namespace cyfon_rpc {
 			return std::string_view(peek(), static_cast<int>(readableBytes()));
 		}
 
-		// string_view版本的append
+		// std::byte版本的append
 		void append(std::span<const std::byte> data) {
 			ensureWritableBytes(data.size());	
 			std::copy(data.begin(), data.end(), writableBytesView().begin());
 			hasWritten(data.size());
 		}
+
+
 
 		// 确保有足够的的可写空间
 		void ensureWritableBytes(size_t len) {
@@ -181,8 +192,8 @@ namespace cyfon_rpc {
 		}
 
 		// 返回写指针
-		char* beginWrite() { return begin() + writerIndex_; }
-		const char* beginWrite() const { return begin() + writerIndex_; }
+		char* beginWrite() { return reinterpret_cast<char*>(begin() + writerIndex_); }
+		const char* beginWrite() const { return reinterpret_cast<const char*>(begin() + writerIndex_); }
 
 		// 写入数据后移动写指针
 		void hasWritten(size_t len) {
@@ -196,47 +207,6 @@ namespace cyfon_rpc {
 			writerIndex_ -= len;
 		}
 
-		// 字节序转换
-		static inline int64_t hostToNetwork64(int64_t host64) {
-			uint64_t Temp_val = static_cast<uint64_t>(host64);
-
-			// 获取原始 64 位数的高 32 位和低 32 位
-			uint32_t high_part = static_cast<uint32_t>(Temp_val >> 32);
-			uint32_t low_part = static_cast<uint32_t>(Temp_val & 0xFFFFFFFFLL);
-
-			// 分别转换高低 32 位然后交换位置重新组装
-			uint64_t swapped_unsigned = (static_cast<uint64_t>(htonl(low_part)) << 32) | htonl(high_part);
-
-			return static_cast<int64_t>(swapped_unsigned);
-		}
-
-		// 查看，并转换为host字节序
-		template<typename IntType>
-		[[nodiscard]] IntType peekInt() const {
-			static_assert(std::is_integral_v<IntType>);
-			assert(readableBytes() >= sizeof(IntType));
-
-			IntType network_value = 0;
-			::memcpy(&network_value, peek(), sizeof(network_value));
-
-			if constexpr (sizeof(IntType) == 8) {
-				return networkToHost64(network_value);
-			}
-			else if constexpr (sizeof(IntType) == 4) {
-				return boost::asio::detail::socket_ops::network_to_host_long(static_cast<uint32_t>(network_value));
-			}
-			else if constexpr (sizeof(IntType) == 2) {
-				return boost::asio::detail::socket_ops::network_to_host_short(static_cast<uint16_t>(network_value));
-			}
-			else if constexpr (sizeof(IntType) == 1) {
-				return network_value;
-			}
-			else {
-				static_assert(sizeof(IntType) == 1 || sizeof(IntType) == 2 || sizeof(IntType) == 4 || sizeof(IntType) == 8, "Unsupported integer size");
-				return 0; // Should not be reached
-			}
-		}
-
 		template<typename IntType>
 		IntType readInt() {
 			IntType result = peekInt<IntType>();
@@ -247,50 +217,30 @@ namespace cyfon_rpc {
 		// 添加数据
 		template<typename IntType>
 		void appendInt(IntType value) {
-			// 确保只用于整数类型
 			static_assert(std::is_integral_v<IntType>, "Integer required.");
+			IntType network_value = hostToNetwork(value);
+			append({ reinterpret_cast<const std::byte*>(&network_value), sizeof(network_value) });
+		}
+
+		// 查看，并转换为host字节序
+		template<typename IntType>
+		[[nodiscard]] IntType peekInt() const {
+			static_assert(std::is_integral_v<IntType>);
+			assert(readableBytes() >= sizeof(IntType));
 
 			IntType network_value = 0;
-			if constexpr (sizeof(IntType) == 8) {
-				network_value = hostToNetwork64(value); // 使用您文件中的64位转换
-			}
-			else if constexpr (sizeof(IntType) == 4) {
-				network_value = boost::asio::detail::socket_ops::host_to_network_long(static_cast<uint32_t>(value));
-			}
-			else if constexpr (sizeof(IntType) == 2) {
-				network_value = boost::asio::detail::socket_ops::host_to_network_short(static_cast<uint16_t>(value));
-			}
-			else if constexpr (sizeof(IntType) == 1) {
-				network_value = value; // 1字节整数无需转换
-			}
-			else {
-				// 在编译时报错，如果使用了不支持的整数大小
-				static_assert(sizeof(IntType) == 1 || sizeof(IntType) == 2 || sizeof(IntType) == 4 || sizeof(IntType) == 8, "Unsupported integer size");
-			}
-			append(&network_value, sizeof(network_value));
+			// 直接從 peek() 的位置複製記憶體
+			::memcpy(&network_value, peek(), sizeof(network_value));
+
+			// 統一使用 networkToHost 範本
+			return networkToHost(network_value);
 		}
 
 		// 头部预置数据
 		template<typename IntType>
 		void prependInt(IntType value) {
 			static_assert(std::is_integral_v<IntType>);
-
-			IntType network_value = 0;
-			if constexpr (sizeof(IntType) == 8) {
-				network_value = hostToNetwork64(value);
-			}
-			else if constexpr (sizeof(IntType) == 4) {
-				network_value = boost::asio::detail::socket_ops::host_to_network_long(value);
-			}
-			else if constexpr (sizeof(IntType) == 2) { // Note: 'consteval' was a typo, corrected to 'constexpr'
-				network_value = boost::asio::detail::socket_ops::host_to_network_short(value);
-			}
-			else if constexpr (sizeof(IntType) == 1) {
-				network_value = value; // 1字节整数无需转换
-			}
-			else {
-				static_assert(sizeof(IntType) == 1 || sizeof(IntType) == 2 || sizeof(IntType) == 4 || sizeof(IntType) == 8, "Unsupported integer size");
-			}
+			IntType network_value = hostToNetwork(value);
 			prepend(&network_value, sizeof(network_value));
 		}
 
@@ -298,18 +248,18 @@ namespace cyfon_rpc {
 		void prepend(const void* data, size_t len) {
 			assert(len <= prependableBytes());
 			readerIndex_ -= len;
-			const char* d = static_cast<const char*>(data);
-			std::copy(d, d + len, begin() + readerIndex_);
+			std::memcpy(begin() + readerIndex_, data, len);
 		}
 
 		// 收缩内存
 		void shrink() {
+			if (readerIndex_ > 0) {
+				std::move(begin() + readerIndex_, begin() + writerIndex_, begin());
+				writerIndex_ -= readerIndex_;
+				readerIndex_ = 0;
+			}
+			buffer_.resize(writerIndex_);
 			buffer_.shrink_to_fit();
-		}
-
-		// 返回底层vector大小
-		size_t internalCapacity() const {
-			return buffer_.capacity();
 		}
 
 		// 直接从socket fd读取数据到缓冲区
@@ -317,28 +267,30 @@ namespace cyfon_rpc {
 
 	private:
 
-		char* begin() { return &*buffer_.begin(); }
-		const char* begin() const { return &*buffer_.begin(); }
+		std::byte* begin() { return buffer_.data(); }
+		const std::byte* begin() const { return &*buffer_.data(); }
 
 		void makeSpace(size_t len) {
 			if (writableBytes() + prependableBytes() < len + kCheapPrepend) {
-				buffer_.resize(len + writerIndex_);
-				// FIX:: 移动read指针
+				size_t readable = readableBytes();
+				std::vector<std::byte> new_buffer(kCheapPrepend + readable + len);
+				std::copy(readableBytesView().begin(), readableBytesView().end(), new_buffer.begin() + kCheapPrepend);
+				buffer_.swap(new_buffer);
+				readerIndex_ = kCheapPrepend;
+				writerIndex_ = readerIndex_ + readable;
 			}
 			else {
-				// 空间足够的话就移动空间
-				assert(kCheapPrepend < readerIndex_);
 				size_t readable = readableBytes();
 				std::move(begin() + readerIndex_,
 					begin() + writerIndex_,
 					begin() + kCheapPrepend);
 				readerIndex_ = kCheapPrepend;
 				writerIndex_ = readerIndex_ + readable;
-				assert(readable == readableBytes());
 			}
+			assert(writableBytes() >= len);
 		}
 
-		std::vector<char> buffer_;
+		std::vector<std::byte> buffer_;
 		size_t readerIndex_;
 		size_t writerIndex_;
 
