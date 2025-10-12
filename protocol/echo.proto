@@ -1,13 +1,33 @@
 syntax = "proto3";
 
-package echo;
+package rpc_demo;
 
-message EchoRequest {
-	string message = 1;
-	// 客户端发送的消息
+// Add 方法的请求
+message AddRequest {
+  int32 a = 1;
+  int32 b = 2;
 }
 
-message EchoResponse {
-	string message = 1;
-	// 服务器返回的消息
+// Add 方法的响应
+message AddResponse {
+  int32 result = 1;
+}
+
+// Subtract 方法的请求
+message SubtractRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+// Subtract 方法的响应
+message SubtractResponse {
+  int32 result = 1;
+}
+
+// 定义服务 "CalculatorService"
+service CalculatorService {
+  // 定义方法 "Add"
+  rpc Add(AddRequest) returns (AddResponse);
+  // 定义方法 "Subtract"
+  rpc Subtract(SubtractRequest) returns (SubtractResponse);
 }
