@@ -7,186 +7,342 @@
 #include <string_view>
 #include <WinSock2.h>
 #include <cstdint>
+#include <type_traits>
+#include <span>
+#include <cstddef>
+#include <concepts>
 
-// +-------------------+------------------+------------------+
-// | prependable bytes |  readable bytes  |  writable bytes  |
-// |                   |     (CONTENT)    |                  |
-// +-------------------+------------------+------------------+
-// |                   |                  |                  |
-// 0      <=      readerIndex   <=   writerIndex    <=     size
+#if __cplusplus >= 202002L && __has_include(<bit>)
+#include <bit>
+#endif
+
+template<std::integral T>
+T hostToNetwork(T value) noexcept {
+#if __cplusplus >= 202302L
+	if constexpr (std::endian::native == std::endian::little) {
+		return std::byteswap(value);
+	}
+#endif
+	if constexpr (sizeof(T) == 8) {
+		return static_cast<T>(htonll(static_cast<uint64_t>(value))); // Assuming htonll is available or defined
+	}
+	else if constexpr (sizeof(T) == 4) {
+		return static_cast<T>(htonl(static_cast<uint32_t>(value)));
+	}
+	else if constexpr (sizeof(T) == 2) {
+		return static_cast<T>(htons(static_cast<uint16_t>(value)));
+	}
+	return value; 
+}
+
+template<std::integral T>
+T networkToHost(T value) noexcept {
+	return hostToNetwork(value); 
+}
 
 
-class Buffer {
-public:
-	// Í·²¿Ô¤Áô8×Ö½Ú
-	static const size_t kCheapPrepend = 8;
-	// ³õÊ¼»º³åÇø´óĞ¡1024×Ö½Ú
-	static const size_t kInitialSize = 1024;
+namespace cyfon_rpc {
+	// +-------------------+------------------+------------------+
+	// | prependable bytes |  readable bytes  |  writable bytes  |
+	// |                   |     (CONTENT)    |                  |
+	// +-------------------+------------------+------------------+
+	// |                   |                  |                  |
+	// 0      <=      readerIndex   <=   writerIndex    <=     size
 
-	explicit Buffer(size_t initialSize = kInitialSize) : 
-		buffer_(kCheapPrepend + initialSize),
-		readerIndex_(kCheapPrepend),
-		writerIndex_(kCheapPrepend) 
-	    {
-		assert(readableBytes() == 0);
-		assert(writableBytes() == initialSize);
-		assert(prependableBytes() == kCheapPrepend);
+
+	class Buffer {
+	public:
+		// å¤´éƒ¨é¢„ç•™8å­—èŠ‚
+		static constexpr size_t kCheapPrepend = 8;
+		// åˆå§‹ç¼“å†²åŒºå¤§å°1024å­—èŠ‚
+		static constexpr size_t kInitialSize = 1024;
+
+		explicit Buffer(size_t initialSize = kInitialSize)
+			: buffer_(kCheapPrepend + initialSize),
+			readerIndex_(kCheapPrepend),
+			writerIndex_(kCheapPrepend) 
+		    {}
+
+		[[nodiscard]] size_t readableBytes() const noexcept { return writerIndex_ - readerIndex_; }
+		[[nodiscard]] size_t writableBytes() const noexcept { return buffer_.size() - writerIndex_; }
+		[[nodiscard]] size_t prependableBytes() const noexcept { return readerIndex_;}
+		[[nodiscard]] size_t internalCapacity() const noexcept { return buffer_.capacity(); }
+
+		[[nodiscard]] std::span<const std::byte> readableBytesView() const noexcept {
+			return { reinterpret_cast<const std::byte*>(peek()), readableBytes() };
 		}
 
-	size_t readableBytes() const { return writerIndex_ - readerIndex_; }
-	size_t writableBytes() const { return buffer_.size() - writerIndex_; }
-	size_t prependableBytes() const { return readerIndex_; }
-
-	/*
-	* ĞèÒªÉè¼ÆµÄ¹¦ÄÜ
-	* 2.Êı¾İ¶ÁÈ¡¹¦ÄÜ retrieve() retrieveAll() retrieveAsString()
-	* 3.Êı¾İĞ´Èë¹¦ÄÜ append() ensureWritableBytes()
-	* 4.»º³åÇøÀ©Õ¹¹¦ÄÜ makeSpace()
-	* 5.Êı¾İ×ª»» GetBufferAllString()
-	*/
-
-	// ·µ»Ø¿É¶ÁÊı¾İµÄÆğÊ¼µØÖ·
-	const char* peek() const { return begin() + readerIndex_; }
-	
-	// ÔÚÊı¾İÖĞ²éÕÒ"\r\n"
-	const char* findCRLF() const {
-		const char* crlf = std::search(peek(), beginWrite(), kCRLF, kCRLF + 2);
-		return crlf == beginWrite() ? nullptr : crlf;
-	}
-
-	// ´ÓÖ¸¶¨µÄstart¿ªÊ¼²éÕÒ"\r\n"
-	const char* findCRLF(const char* start) const {
-		assert(peek() <= start);
-		assert(start <= beginWrite());
-		const char* crlf = std::search(start, beginWrite(), kCRLF, kCRLF + 2);
-		return crlf == beginWrite() ? nullptr : crlf;
-	}
-
-	// ²éÕÒ»»ĞĞ·û
-	const char* findEOL() const {
-		const void* eol = memchr(peek(), '\n', readableBytes());
-		return static_cast<const char*>(eol);
-	}
-
-	// Ç°ÒÆ¶ÁÖ¸Õë,Ò²¾ÍÊÇÏû·Ñµôlen×Ö½ÚÊı¾İ
-	void retrieve(size_t len) {
-		assert(len <= readableBytes());
-		if (len < readableBytes()) {
-			readerIndex_ += len;
+		[[nodiscard]] std::span<std::byte> writableBytesView() noexcept {
+			return { reinterpret_cast<std::byte*>(beginWrite()), writableBytes() };
 		}
-		else {
-			retrieveAll();
+
+		// è¿”å›å¯è¯»æ•°æ®çš„èµ·å§‹åœ°å€
+		[[nodiscard]] const char* peek() const noexcept { return begin() + readerIndex_; }
+
+		// åœ¨ç¼“å†²åŒºä¸­æŸ¥æ‰¾"\r\n"
+		const char* findCRLF() const {
+			const char* crlf = std::search(peek(), beginWrite(), kCRLF, kCRLF + 2);
+			return crlf == beginWrite() ? nullptr : crlf;
 		}
-	}
 
-	// Ïû·ÑÊı¾İÖ±µ½Ö¸¶¨µÄendÎ»ÖÃ
-	void retrieveUntil(const char* end) {
-		assert(peek() <= end);
-		assert(end <= beginWrite());
-		retrieve(end - peek());
-	}
-
-	void retrieveInt64() { retrieve(sizeof(int64_t)); }
-	void retrieveInt32() { retrieve(sizeof(int32_t)); }
-	void retrieveInt16() { retrieve(sizeof(int16_t)); }
-	void retrieveInt8() { retrieve(sizeof(int8_t)); }
-
-	// Ïû·ÑµôËùÓĞÊı¾İ
-	void retrieveAll() {
-		readerIndex_ = kCheapPrepend;
-		writerIndex_ = kCheapPrepend;
-	}
-
-	// ×ª»»ÎªstringĞÎÊ½²¢Ïû·ÑµôÊı¾İ
-	std::string retrieveAsString(size_t len) {
-		assert(len <= readableBytes());
-		std::string str(peek(), readableBytes());
-		retrieveAll();
-		return str;
-	}
-
-	// È¡³öËùÓĞÊı¾İ²¢Çå¿Õ»º³åÇø(stringĞÎÊ½)
-	std::string retrieveAllAsString() {
-		return retrieveAsString(readableBytes()); 
-	}
-
-	// ¿É¶ÁÇøÓò(string_viewĞÎÊ½)
-	std::string_view toStringView() const {
-		return std::string_view(peek(), static_cast<int>(readableBytes()));
-	}
-
-	// string_view°æ±¾µÄappend
-	void append(const std::string_view str) {
-		append(str.data(), str.size());
-	}
-
-	// Ğ´ÈëÊı¾İ
-	void append(const char* data, size_t len) {
-		ensureWritableBytes(len);
-		std::copy(data, data + len, beginWrite());
-		hasWritten(len);
-	}
-
-	// void*°æ±¾µÄappend
-	void append(const void* data, size_t len) {
-		append(static_cast<const char*>(data), len);
-	}
-
-	// È·±£ÓĞ×ã¹»µÄ¿ÉĞ´¿Õ¼ä
-	void ensureWritableBytes(size_t len) {
-		if (writableBytes() < len) {
-			makeSpace(len);
+		// ä»æŒ‡å®šçš„startå¼€å§‹æŸ¥æ‰¾"\r\n"
+		const char* findCRLF(const char* start) const {
+			assert(peek() <= start);
+			assert(start <= beginWrite());
+			const char* crlf = std::search(start, beginWrite(), kCRLF, kCRLF + 2);
+			return crlf == beginWrite() ? nullptr : crlf;
 		}
-		assert(writableBytes() >= len);
-	}
 
-	void swap(Buffer& rhs) {
-		buffer_.swap(rhs.buffer_);
-		std::swap(readerIndex_, rhs.readerIndex_);
-		std::swap(writerIndex_, rhs.writerIndex_);
-	}
+		// æŸ¥æ‰¾ä¸€ä¸ªæ¢è¡Œç¬¦
+		const char* findEOL() const {
+			const void* eol = memchr(peek(), '\n', readableBytes());
+			return static_cast<const char*>(eol);
+		}
 
-	// ·µ»ØĞ´ÇøÖ¸Õë
-	char* beginWrite() { return begin() + writerIndex_; }
-	const char* beginWrite() const { return begin() + writerIndex_; }
+		// ä»æŒ‡å®šä½ç½®å¼€å§‹æŸ¥æ‰¾ä¸€ä¸ªæ¢è¡Œç¬¦
+		const char* findEOL(const char* start) const {
+			assert(peek() <= start);
+			assert(start <= beginWrite());
+			const void* eol = memchr(start, '\n', beginWrite() - start);
+			return static_cast<const char*>(eol);
+		}
 
-	// Ç°ÒÆÊı¾İºó£¬ÒÆ¶¯Ğ´Ö¸Õë
-	void hasWritten(size_t len) {
-		assert(len <= writableBytes());
-		writerIndex_ += len;
-	}
+		// å¯¹å†…å­˜è¿›è¡Œé¢„åˆ†é…
+		void reserve(size_t capacity) {
+			buffer_.reserve(capacity);
+		}
 
-	// ³·Ïú²Ù×÷,ºóÒÆĞ´Ö¸Õë
-	void unwrite(size_t len) {
-		assert(len <= readableBytes());
-		writerIndex_ -= len;
-	}
+		// å‰ç§»è¯»æŒ‡é’ˆ,ä¹Ÿä»£è¡¨ä¸¢å¼ƒæ‰lenå­—èŠ‚çš„æ•°æ®
+		void retrieve(size_t len) {
+			assert(len <= readableBytes());
+			if (len < readableBytes()) {
+				readerIndex_ += len;
+			}
+			else {
+				retrieveAll();
+			}
+		}
 
-	// ´ó¶Ë×ª»»
-	inline uint64_t hostToNetwork64(uint64_t host64) {
-		// ÌáÈ¡Ô­Ê¼ 64 Î»ÕûÊıµÄ¸ß 32 Î»ºÍµÍ 32 Î»
-		uint32_t high_part = static_cast<uint32_t>(host64 >> 32);
-		uint32_t low_part = static_cast<uint32_t>(host64 & 0xFFFFFFFFLL); 
+		// ä¸¢å¼ƒæ•°æ®ç›´åˆ°æŒ‡å®šçš„endä½ç½®
+		void retrieveUntil(const char* end) {
+			assert(peek() <= end);
+			assert(end <= beginWrite());
+			retrieve(end - peek());
+		}
 
-		// ·Ö±ğ×ª»»¸ßµÍ 32 Î»£¬È»ºó½»»»Î»ÖÃÖØĞÂ×é×°
-		return (static_cast<uint64_t>(htonl(low_part)) << 32) | htonl(high_part);
-	}
+		void retrieveInt64() { retrieve(sizeof(int64_t)); }
+		void retrieveInt32() { retrieve(sizeof(int32_t)); }
+		void retrieveInt16() { retrieve(sizeof(int16_t)); }
+		void retrieveInt8() { retrieve(sizeof(int8_t)); }
 
-	// ÍøÂç×Ö½ÚĞò×·¼ÓÊı¾İ
-	void appendInt64(int64_t x) {
-		uint64_t be64 = hostToNetwork64(static_cast<uint64_t>(x));
-		append(&be64, sizeof be64);
-	}
+		// ä¸¢å¼ƒæ‰€æœ‰å¯è¯»æ•°æ®
+		void retrieveAll() {
+			readerIndex_ = kCheapPrepend;
+			writerIndex_ = kCheapPrepend;
+		}
 
-private:
-	char* begin() { return &*buffer_.begin(); }
-	const char* begin() const { return &*buffer_.begin(); }
+		// è½¬æ¢ä¸ºstringæ ¼å¼å¹¶ä¸¢å¼ƒæ•°æ®
+		[[nodiscard]] std::string retrieveAsString(size_t len) {
+			assert(len <= readableBytes());
+			std::string str(peek(), len);
+			retrieve(len);
+			return str;
+		}
 
-	std::vector<char> buffer_;
-	size_t readerIndex_;
-	size_t writerIndex_;
+		// å–å‡ºæ‰€æœ‰æ•°æ®å¹¶æ¸…ç©ºç¼“å†²åŒº(stringæ ¼å¼)
+		std::string retrieveAllAsString() {
+			return retrieveAsString(readableBytes());
+		}
 
-	// »Ø³µ»»ĞĞ·û
-	static const char kCRLF[];
-};
+		// å¯è¯»æ•°æ®(string_viewæ ¼å¼)
+		[[nodiscard]] std::string_view toStringView() const {
+			return std::string_view(peek(), static_cast<int>(readableBytes()));
+		}
 
+		// string_viewç‰ˆæœ¬çš„append
+		void append(std::span<const std::byte> data) {
+			ensureWritableBytes(data.size());	
+			std::copy(data.begin(), data.end(), writableBytesView().begin());
+			hasWritten(data.size());
+		}
+
+		// ç¡®ä¿æœ‰è¶³å¤Ÿçš„çš„å¯å†™ç©ºé—´
+		void ensureWritableBytes(size_t len) {
+			if (writableBytes() < len) {
+				makeSpace(len);
+			}
+			assert(writableBytes() >= len);
+		}
+
+		void swap(Buffer& rhs) noexcept {
+			buffer_.swap(rhs.buffer_);
+			std::swap(readerIndex_, rhs.readerIndex_);
+			std::swap(writerIndex_, rhs.writerIndex_);
+		}
+
+		// è¿”å›å†™æŒ‡é’ˆ
+		char* beginWrite() { return begin() + writerIndex_; }
+		const char* beginWrite() const { return begin() + writerIndex_; }
+
+		// å†™å…¥æ•°æ®åç§»åŠ¨å†™æŒ‡é’ˆ
+		void hasWritten(size_t len) {
+			assert(len <= writableBytes());
+			writerIndex_ += len;
+		}
+
+		// å›é€€æ•°æ®, å›é€€å†™æŒ‡é’ˆ
+		void unwrite(size_t len) {
+			assert(len <= readableBytes());
+			writerIndex_ -= len;
+		}
+
+		// å­—èŠ‚åºè½¬æ¢
+		static inline int64_t hostToNetwork64(int64_t host64) {
+			uint64_t Temp_val = static_cast<uint64_t>(host64);
+
+			// è·å–åŸå§‹ 64 ä½æ•°çš„é«˜ 32 ä½å’Œä½ 32 ä½
+			uint32_t high_part = static_cast<uint32_t>(Temp_val >> 32);
+			uint32_t low_part = static_cast<uint32_t>(Temp_val & 0xFFFFFFFFLL);
+
+			// åˆ†åˆ«è½¬æ¢é«˜ä½ 32 ä½ç„¶åäº¤æ¢ä½ç½®é‡æ–°ç»„è£…
+			uint64_t swapped_unsigned = (static_cast<uint64_t>(htonl(low_part)) << 32) | htonl(high_part);
+
+			return static_cast<int64_t>(swapped_unsigned);
+		}
+
+		// æŸ¥çœ‹ï¼Œå¹¶è½¬æ¢ä¸ºhostå­—èŠ‚åº
+		template<typename IntType>
+		[[nodiscard]] IntType peekInt() const {
+			static_assert(std::is_integral_v<IntType>);
+			assert(readableBytes() >= sizeof(IntType));
+
+			IntType network_value = 0;
+			::memcpy(&network_value, peek(), sizeof(network_value));
+
+			if constexpr (sizeof(IntType) == 8) {
+				return networkToHost64(network_value);
+			}
+			else if constexpr (sizeof(IntType) == 4) {
+				return boost::asio::detail::socket_ops::network_to_host_long(static_cast<uint32_t>(network_value));
+			}
+			else if constexpr (sizeof(IntType) == 2) {
+				return boost::asio::detail::socket_ops::network_to_host_short(static_cast<uint16_t>(network_value));
+			}
+			else if constexpr (sizeof(IntType) == 1) {
+				return network_value;
+			}
+			else {
+				static_assert(sizeof(IntType) == 1 || sizeof(IntType) == 2 || sizeof(IntType) == 4 || sizeof(IntType) == 8, "Unsupported integer size");
+				return 0; // Should not be reached
+			}
+		}
+
+		template<typename IntType>
+		IntType readInt() {
+			IntType result = peekInt<IntType>();
+			retrieve(sizeof(IntType));
+			return result;
+		}
+
+		// æ·»åŠ æ•°æ®
+		template<typename IntType>
+		void appendInt(IntType value) {
+			// ç¡®ä¿åªç”¨äºæ•´æ•°ç±»å‹
+			static_assert(std::is_integral_v<IntType>, "Integer required.");
+
+			IntType network_value = 0;
+			if constexpr (sizeof(IntType) == 8) {
+				network_value = hostToNetwork64(value); // ä½¿ç”¨æ‚¨æ–‡ä»¶ä¸­çš„64ä½è½¬æ¢
+			}
+			else if constexpr (sizeof(IntType) == 4) {
+				network_value = boost::asio::detail::socket_ops::host_to_network_long(static_cast<uint32_t>(value));
+			}
+			else if constexpr (sizeof(IntType) == 2) {
+				network_value = boost::asio::detail::socket_ops::host_to_network_short(static_cast<uint16_t>(value));
+			}
+			else if constexpr (sizeof(IntType) == 1) {
+				network_value = value; // 1å­—èŠ‚æ•´æ•°æ— éœ€è½¬æ¢
+			}
+			else {
+				// åœ¨ç¼–è¯‘æ—¶æŠ¥é”™ï¼Œå¦‚æœä½¿ç”¨äº†ä¸æ”¯æŒçš„æ•´æ•°å¤§å°
+				static_assert(sizeof(IntType) == 1 || sizeof(IntType) == 2 || sizeof(IntType) == 4 || sizeof(IntType) == 8, "Unsupported integer size");
+			}
+			append(&network_value, sizeof(network_value));
+		}
+
+		// å¤´éƒ¨é¢„ç½®æ•°æ®
+		template<typename IntType>
+		void prependInt(IntType value) {
+			static_assert(std::is_integral_v<IntType>);
+
+			IntType network_value = 0;
+			if constexpr (sizeof(IntType) == 8) {
+				network_value = hostToNetwork64(value);
+			}
+			else if constexpr (sizeof(IntType) == 4) {
+				network_value = boost::asio::detail::socket_ops::host_to_network_long(value);
+			}
+			else if constexpr (sizeof(IntType) == 2) { // Note: 'consteval' was a typo, corrected to 'constexpr'
+				network_value = boost::asio::detail::socket_ops::host_to_network_short(value);
+			}
+			else if constexpr (sizeof(IntType) == 1) {
+				network_value = value; // 1å­—èŠ‚æ•´æ•°æ— éœ€è½¬æ¢
+			}
+			else {
+				static_assert(sizeof(IntType) == 1 || sizeof(IntType) == 2 || sizeof(IntType) == 4 || sizeof(IntType) == 8, "Unsupported integer size");
+			}
+			prepend(&network_value, sizeof(network_value));
+		}
+
+		// åœ¨ç¼“å†²åŒºå¤´éƒ¨é¢„ç½®ä¸€æ®µé•¿åº¦ä¸ºlençš„æ•°æ®
+		void prepend(const void* data, size_t len) {
+			assert(len <= prependableBytes());
+			readerIndex_ -= len;
+			const char* d = static_cast<const char*>(data);
+			std::copy(d, d + len, begin() + readerIndex_);
+		}
+
+		// æ”¶ç¼©å†…å­˜
+		void shrink() {
+			buffer_.shrink_to_fit();
+		}
+
+		// è¿”å›åº•å±‚vectorå¤§å°
+		size_t internalCapacity() const {
+			return buffer_.capacity();
+		}
+
+		// ç›´æ¥ä»socket fdè¯»å–æ•°æ®åˆ°ç¼“å†²åŒº
+		size_t readSock(boost::asio::ip::tcp::socket&, boost::system::error_code&);
+
+	private:
+
+		char* begin() { return &*buffer_.begin(); }
+		const char* begin() const { return &*buffer_.begin(); }
+
+		void makeSpace(size_t len) {
+			if (writableBytes() + prependableBytes() < len + kCheapPrepend) {
+				buffer_.resize(len + writerIndex_);
+				// FIX:: ç§»åŠ¨readæŒ‡é’ˆ
+			}
+			else {
+				// ç©ºé—´è¶³å¤Ÿçš„è¯å°±ç§»åŠ¨ç©ºé—´
+				assert(kCheapPrepend < readerIndex_);
+				size_t readable = readableBytes();
+				std::move(begin() + readerIndex_,
+					begin() + writerIndex_,
+					begin() + kCheapPrepend);
+				readerIndex_ = kCheapPrepend;
+				writerIndex_ = readerIndex_ + readable;
+				assert(readable == readableBytes());
+			}
+		}
+
+		std::vector<char> buffer_;
+		size_t readerIndex_;
+		size_t writerIndex_;
+
+		// å›è½¦æ¢è¡Œç¬¦
+		static const char kCRLF[];
+	};
+}
