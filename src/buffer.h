@@ -1,3 +1,5 @@
+#pragma once
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -12,14 +14,6 @@
 #include <cstddef>
 #include <concepts>
 
-
-/*
-* 
-* 
- fixme: 这里面参杂了非常多令人恶心的强制转换，请后续更新
-*
-*
-*/
 
 #if __cplusplus >= 202002L && __has_include(<bit>)
 #include <bit>
@@ -48,9 +42,6 @@ template<std::integral T>
 T networkToHost(T value) noexcept {
 	return hostToNetwork(value); 
 }
-
-
-namespace cyfon_rpc {
 	// +-------------------+------------------+------------------+
 	// | prependable bytes |  readable bytes  |  writable bytes  |
 	// |                   |     (CONTENT)    |                  |
@@ -58,7 +49,7 @@ namespace cyfon_rpc {
 	// |                   |                  |                  |
 	// 0      <=      readerIndex   <=   writerIndex    <=     size
 
-
+namespace cyfon_rpc {
 	class Buffer {
 	public:
 		// 头部预留8字节
@@ -69,24 +60,25 @@ namespace cyfon_rpc {
 		explicit Buffer(size_t initialSize = kInitialSize)
 			: buffer_(kCheapPrepend + initialSize),
 			readerIndex_(kCheapPrepend),
-			writerIndex_(kCheapPrepend) 
-		    {}
+			writerIndex_(kCheapPrepend)
+		{
+		}
 
 		[[nodiscard]] size_t readableBytes() const noexcept { return writerIndex_ - readerIndex_; }
 		[[nodiscard]] size_t writableBytes() const noexcept { return buffer_.size() - writerIndex_; }
-		[[nodiscard]] size_t prependableBytes() const noexcept { return readerIndex_;}
+		[[nodiscard]] size_t prependableBytes() const noexcept { return readerIndex_; }
 		[[nodiscard]] size_t internalCapacity() const noexcept { return buffer_.capacity(); }
 
-		[[nodiscard]] std::span<const std::byte> readableBytesView() const noexcept {
-			return { reinterpret_cast<const std::byte*>(peek()), readableBytes() };
+		[[nodiscard]] std::span<const char> readableBytesView() const noexcept {
+			return { peek(), readableBytes() };
 		}
 
-		[[nodiscard]] std::span<std::byte> writableBytesView() noexcept {
-			return { reinterpret_cast<std::byte*>(beginWrite()), writableBytes() };
+		[[nodiscard]] std::span<char> writableBytesView() noexcept {
+			return { beginWrite(), writableBytes() };
 		}
 
 		// 返回可读数据的起始地址
-		[[nodiscard]] const char* peek() const noexcept { return reinterpret_cast<const char*>(begin() + readerIndex_); }
+		[[nodiscard]] const char* peek() const noexcept { return begin() + readerIndex_; }
 
 		// 在缓冲区中查找"\r\n"
 		const char* findCRLF() const {
@@ -168,14 +160,19 @@ namespace cyfon_rpc {
 			return std::string_view(peek(), readableBytes());
 		}
 
-		// std::byte版本的append
 		void append(std::span<const std::byte> data) {
-			ensureWritableBytes(data.size());	
-			std::copy(data.begin(), data.end(), writableBytesView().begin());
-			hasWritten(data.size());
+			append(reinterpret_cast<const char*>(data.data()), data.size());
 		}
 
+		void append(const char* data, size_t len) {
+			ensureWritableBytes(len);
+			std::copy(data, data + len, beginWrite());
+			hasWritten(len);
+		}
 
+		void append(std::string_view str) {
+			append(str.data(), str.size());
+		}
 
 		// 确保有足够的的可写空间
 		void ensureWritableBytes(size_t len) {
@@ -192,8 +189,8 @@ namespace cyfon_rpc {
 		}
 
 		// 返回写指针
-		char* beginWrite() { return reinterpret_cast<char*>(begin() + writerIndex_); }
-		const char* beginWrite() const { return reinterpret_cast<const char*>(begin() + writerIndex_); }
+		char* beginWrite() { return begin() + writerIndex_; }
+		const char* beginWrite() const { return begin() + writerIndex_; }
 
 		// 写入数据后移动写指针
 		void hasWritten(size_t len) {
@@ -219,7 +216,7 @@ namespace cyfon_rpc {
 		void appendInt(IntType value) {
 			static_assert(std::is_integral_v<IntType>, "Integer required.");
 			IntType network_value = hostToNetwork(value);
-			append({ reinterpret_cast<const std::byte*>(&network_value), sizeof(network_value) });
+			append({ reinterpret_cast<const char*>(&network_value), sizeof(network_value) });
 		}
 
 		// 查看，并转换为host字节序
@@ -267,20 +264,22 @@ namespace cyfon_rpc {
 
 	private:
 
-		std::byte* begin() { return buffer_.data(); }
-		const std::byte* begin() const { return &*buffer_.data(); }
+		char* begin() { return buffer_.data(); }
+		const char* begin() const { return &*buffer_.data(); }
 
 		void makeSpace(size_t len) {
 			if (writableBytes() + prependableBytes() < len + kCheapPrepend) {
 				size_t readable = readableBytes();
-
 				size_t old_size = buffer_.size();
 				size_t new_size_needed = kCheapPrepend + readable + len;
 				size_t new_size = std::max(old_size * 2, new_size_needed);
 
-				std::vector<std::byte> new_buffer(new_size); 
-				std::copy(readableBytesView().begin(), readableBytesView().end(), new_buffer.begin() + kCheapPrepend);
-				buffer_.swap(new_buffer);
+				// <--- 更改: new_buffer类型
+				std::vector<char> new_buffer(new_size);
+				// <--- 更改: 直接使用 begin() + readerIndex_，因为现在类型匹配
+				std::copy(begin() + readerIndex_, begin() + writerIndex_, new_buffer.begin() + kCheapPrepend);
+
+				buffer_.swap(new_buffer); 
 				readerIndex_ = kCheapPrepend;
 				writerIndex_ = readerIndex_ + readable;
 			}
@@ -294,7 +293,7 @@ namespace cyfon_rpc {
 			}
 			assert(writableBytes() >= len);
 		}
-		std::vector<std::byte> buffer_;
+		std::vector<char> buffer_;
 		size_t readerIndex_;
 		size_t writerIndex_;
 

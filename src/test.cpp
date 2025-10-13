@@ -1,11 +1,12 @@
 #include <iostream>
 #include <cassert>
+#include <string_view> // 确保包含了 string_view
 #include "buffer.h"
 
-// 為了方便，我們使用 cyfon_rpc 命名空間
+// 为了方便，我们使用 cyfon_rpc 命名空间
 using namespace cyfon_rpc;
 
-// 測試函式宣告
+// 测试函式宣告
 void testInitialState();
 void testAppendAndRetrieve();
 void testBufferGrowth();
@@ -47,7 +48,8 @@ void testAppendAndRetrieve() {
     std::cout << "--- Running testAppendAndRetrieve ---" << std::endl;
     Buffer buf;
     std::string_view str = "hello world";
-    buf.append({ reinterpret_cast<const std::byte*>(str.data()), str.size() });
+    // <--- 优化: 直接使用 append(string_view)
+    buf.append(str);
 
     assert(buf.readableBytes() == str.size());
     assert(buf.writableBytes() == Buffer::kInitialSize - str.size());
@@ -60,7 +62,7 @@ void testAppendAndRetrieve() {
 
     buf.retrieveAll();
     assert(buf.readableBytes() == 0);
-    assert(buf.writableBytes() == Buffer::kInitialSize); // retrieveAll 應該重置指標
+    assert(buf.writableBytes() == Buffer::kInitialSize);
     assert(buf.prependableBytes() == Buffer::kCheapPrepend);
 
     std::cout << "testAppendAndRetrieve PASSED" << std::endl;
@@ -71,30 +73,32 @@ void testBufferGrowth() {
     std::cout << "--- Running testBufferGrowth ---" << std::endl;
     Buffer buf;
     std::string long_str(1200, 'x');
-    buf.append({ reinterpret_cast<const std::byte*>(long_str.data()), long_str.size() });
+    // <--- 优化: 直接使用 append(string)
+    buf.append(long_str);
 
     assert(buf.readableBytes() == 1200);
-    // 檢查 writableBytes 是否大於 0，表示已經擴容
     assert(buf.writableBytes() > 0);
     assert(buf.toStringView() == long_str);
     std::cout << "testBufferGrowth PASSED" << std::endl;
 }
 
-// 測試4：測試內部空間的回收利用 (makeSpace 的 else 分支)
+// 測試4：測試內部空間的回收利用
 void testBufferRecycle() {
     std::cout << "--- Running testBufferRecycle ---" << std::endl;
     Buffer buf;
     std::string str(200, 'x');
-    buf.append({ reinterpret_cast<const std::byte*>(str.data()), str.size() });
+    // <--- 优化
+    buf.append(str);
 
-    buf.retrieve(100); // 釋放前面 100 位元組
+    buf.retrieve(100);
     assert(buf.prependableBytes() == Buffer::kCheapPrepend + 100);
 
     std::string str2(1000, 'y');
-    buf.append({ reinterpret_cast<const std::byte*>(str2.data()), str2.size() });
+    // <--- 优化
+    buf.append(str2);
 
     assert(buf.readableBytes() == 100 + 1000);
-    assert(buf.prependableBytes() == Buffer::kCheapPrepend); // 空間被回收，指標回到初始位置
+    assert(buf.prependableBytes() == Buffer::kCheapPrepend);
 
     std::string expected_str = std::string(100, 'x') + std::string(1000, 'y');
     assert(buf.retrieveAllAsString() == expected_str);
@@ -102,7 +106,7 @@ void testBufferRecycle() {
     std::cout << "testBufferRecycle PASSED" << std::endl;
 }
 
-// 測試5：測試整數的讀寫
+// 測試5：測試整數的讀寫 (无需改动)
 void testIntegerOperations() {
     std::cout << "--- Running testIntegerOperations ---" << std::endl;
     Buffer buf;
@@ -114,7 +118,6 @@ void testIntegerOperations() {
 
     assert(buf.readableBytes() == sizeof(val64) + sizeof(val32));
     assert(buf.peekInt<int64_t>() == val64);
-
     assert(buf.readInt<int64_t>() == val64);
     assert(buf.readInt<int32_t>() == val32);
     assert(buf.readableBytes() == 0);
@@ -127,9 +130,10 @@ void testPrepend() {
     std::cout << "--- Running testPrepend ---" << std::endl;
     Buffer buf;
     std::string_view content = "data";
-    buf.append({ reinterpret_cast<const std::byte*>(content.data()), content.size() });
+    // <--- 优化
+    buf.append(content);
 
-    int32_t header = 4; // 假設是長度標頭
+    int32_t header = 4;
     buf.prependInt(header);
 
     assert(buf.readableBytes() == sizeof(header) + content.size());
@@ -145,14 +149,16 @@ void testFindCRLF() {
     std::cout << "--- Running testFindCRLF ---" << std::endl;
     Buffer buf;
     std::string_view data = "hello\r\nworld";
-    buf.append({ reinterpret_cast<const std::byte*>(data.data()), data.size() });
+    // <--- 优化
+    buf.append(data);
 
     const char* crlf = buf.findCRLF();
     assert(crlf != nullptr);
     assert(std::string_view(buf.peek(), crlf - buf.peek()) == "hello");
 
     buf.retrieveAll();
-    buf.append({ reinterpret_cast<const std::byte*>("no crlf"), 7 });
+    // <--- 优化
+    buf.append("no crlf");
     assert(buf.findCRLF() == nullptr);
     std::cout << "testFindCRLF PASSED" << std::endl;
 }
@@ -160,17 +166,16 @@ void testFindCRLF() {
 // 測試8：測試 shrink 功能
 void testShrink() {
     std::cout << "--- Running testShrink ---" << std::endl;
-    Buffer buf(20); // 使用小容量方便測試
+    Buffer buf(20);
     std::string data(10, 'z');
-    buf.append({ reinterpret_cast<const std::byte*>(data.data()), data.size() });
+    // <--- 优化
+    buf.append(data);
     buf.retrieve(5);
 
     buf.shrink();
 
-    // shrink 後，prependable 空間應該消失
     assert(buf.prependableBytes() == 0);
     assert(buf.readableBytes() == 5);
-    // 內部容量應該也縮小了
     assert(buf.internalCapacity() == 5);
     assert(buf.toStringView() == "zzzzz");
     std::cout << "testShrink PASSED" << std::endl;
