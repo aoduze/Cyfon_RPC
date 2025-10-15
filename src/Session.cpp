@@ -28,7 +28,15 @@ bool Session::processMessage() {
     // 检测是否足够解析出一个完整的消息头
 	cyfon_rpc::RpcHeader header;
 	if (!cyfon_rpc::deserialize_header(socketBuffer_, header)) {
-		
+		return false;
 	}
+
+	if (socketBuffer_.readableBytes() < header.message_size) {
+		return false;
+	}
+
+	//------------------------------
+	// 至此，我们解析出了一个完整的消息
+    
 }
 

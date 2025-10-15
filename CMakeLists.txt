@@ -23,7 +23,7 @@ add_library(cyfon_rpc_lib STATIC
     
     
     ${PROTO_SRCS}
- "src/buffer.h" "src/buffer.cpp" "src/rpc_header.h" "src/Session.h" "src/Session.cpp" "src/rpc_server.h" "src/rpc_protocol_utils.h" )
+ "src/buffer.h" "src/buffer.cpp" "src/rpc_header.h" "src/Session.h" "src/Session.cpp" "src/rpc_server.h" "src/rpc_protocol_utils.h"  "src/rpc_server.cpp")
 
 # 為庫添加包含目錄
 target_include_directories(cyfon_rpc_lib PUBLIC
@@ -39,9 +39,9 @@ target_link_libraries(cyfon_rpc_lib PUBLIC
 )
 
 # --- 生成可执行文件 ---
-add_executable(echo_server src/echo_server.cpp "src/buffer.h" "src/buffer.cpp" "src/rpc_header.h" "src/Session.h" "src/Session.cpp" "src/rpc_server.h" "src/rpc_protocol_utils.h" )
-add_executable(echo_client src/echo_client.cpp "src/buffer.h" "src/buffer.cpp" "src/rpc_header.h" "src/Session.h" "src/Session.cpp" "src/rpc_server.h" "src/rpc_protocol_utils.h" )
-add_executable(buffer_test src/test.cpp "src/rpc_header.h" "src/Session.h" "src/Session.cpp" "src/rpc_server.h" "src/rpc_protocol_utils.h" )
+add_executable(echo_server src/echo_server.cpp "src/buffer.h" "src/buffer.cpp" "src/rpc_header.h" "src/Session.h" "src/Session.cpp" "src/rpc_server.h" "src/rpc_protocol_utils.h"  "src/rpc_server.cpp")
+add_executable(echo_client src/echo_client.cpp "src/buffer.h" "src/buffer.cpp" "src/rpc_header.h" "src/Session.h" "src/Session.cpp" "src/rpc_server.h" "src/rpc_protocol_utils.h"  "src/rpc_server.cpp")
+add_executable(buffer_test src/test.cpp "src/rpc_header.h" "src/Session.h" "src/Session.cpp" "src/rpc_server.h" "src/rpc_protocol_utils.h"  "src/rpc_server.cpp")
 
 # --- 【IntelliSense 增強設定】 ---
 # 雖然這些路徑可以透過 cyfon_rpc_lib 傳遞，但明確地再次為執行檔指定，
