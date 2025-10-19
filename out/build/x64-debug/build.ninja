@@ -47,9 +47,9 @@ cmake_ninja_workdir = D$:\cppsoft\Cyfon_RPC\out\build\x64-debug\
 #############################################
 # Order-only phony target for cyfon_rpc_lib
 
-build cmake_object_order_depends_target_cyfon_rpc_lib: phony || echo.pb.cc echo.pb.h person.pb.cc person.pb.h
+build cmake_object_order_depends_target_cyfon_rpc_lib: phony || calu.pb.cc calu.pb.h person.pb.cc person.pb.h
 
-build CMakeFiles\cyfon_rpc_lib.dir\echo.pb.cc.obj: CXX_COMPILER__cyfon_rpc_lib_unscanned_Debug D$:\cppsoft\Cyfon_RPC\out\build\x64-debug\echo.pb.cc || cmake_object_order_depends_target_cyfon_rpc_lib
+build CMakeFiles\cyfon_rpc_lib.dir\calu.pb.cc.obj: CXX_COMPILER__cyfon_rpc_lib_unscanned_Debug D$:\cppsoft\Cyfon_RPC\out\build\x64-debug\calu.pb.cc || cmake_object_order_depends_target_cyfon_rpc_lib
   DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
   FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
   INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
@@ -94,6 +94,15 @@ build CMakeFiles\cyfon_rpc_lib.dir\src\rpc_server.cpp.obj: CXX_COMPILER__cyfon_r
   TARGET_COMPILE_PDB = CMakeFiles\cyfon_rpc_lib.dir\cyfon_rpc_lib.pdb
   TARGET_PDB = cyfon_rpc_lib.pdb
 
+build CMakeFiles\cyfon_rpc_lib.dir\src\RpcClient.cpp.obj: CXX_COMPILER__cyfon_rpc_lib_unscanned_Debug D$:\cppsoft\Cyfon_RPC\src\RpcClient.cpp || cmake_object_order_depends_target_cyfon_rpc_lib
+  DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
+  INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
+  OBJECT_DIR = CMakeFiles\cyfon_rpc_lib.dir
+  OBJECT_FILE_DIR = CMakeFiles\cyfon_rpc_lib.dir\src
+  TARGET_COMPILE_PDB = CMakeFiles\cyfon_rpc_lib.dir\cyfon_rpc_lib.pdb
+  TARGET_PDB = cyfon_rpc_lib.pdb
+
 
 # =============================================================================
 # Link build statements for STATIC_LIBRARY target cyfon_rpc_lib
@@ -102,7 +111,7 @@ build CMakeFiles\cyfon_rpc_lib.dir\src\rpc_server.cpp.obj: CXX_COMPILER__cyfon_r
 #############################################
 # Link the static library cyfon_rpc_lib.lib
 
-build cyfon_rpc_lib.lib: CXX_STATIC_LIBRARY_LINKER__cyfon_rpc_lib_Debug CMakeFiles\cyfon_rpc_lib.dir\echo.pb.cc.obj CMakeFiles\cyfon_rpc_lib.dir\person.pb.cc.obj CMakeFiles\cyfon_rpc_lib.dir\src\buffer.cpp.obj CMakeFiles\cyfon_rpc_lib.dir\src\Session.cpp.obj CMakeFiles\cyfon_rpc_lib.dir\src\rpc_server.cpp.obj
+build cyfon_rpc_lib.lib: CXX_STATIC_LIBRARY_LINKER__cyfon_rpc_lib_Debug CMakeFiles\cyfon_rpc_lib.dir\calu.pb.cc.obj CMakeFiles\cyfon_rpc_lib.dir\person.pb.cc.obj CMakeFiles\cyfon_rpc_lib.dir\src\buffer.cpp.obj CMakeFiles\cyfon_rpc_lib.dir\src\Session.cpp.obj CMakeFiles\cyfon_rpc_lib.dir\src\rpc_server.cpp.obj CMakeFiles\cyfon_rpc_lib.dir\src\RpcClient.cpp.obj
   LANGUAGE_COMPILE_FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -MDd
   LINK_FLAGS = /machine:x64
   OBJECT_DIR = CMakeFiles\cyfon_rpc_lib.dir
@@ -111,136 +120,6 @@ build cyfon_rpc_lib.lib: CXX_STATIC_LIBRARY_LINKER__cyfon_rpc_lib_Debug CMakeFil
   TARGET_COMPILE_PDB = CMakeFiles\cyfon_rpc_lib.dir\cyfon_rpc_lib.pdb
   TARGET_FILE = cyfon_rpc_lib.lib
   TARGET_PDB = cyfon_rpc_lib.pdb
-
-# =============================================================================
-# Object build statements for EXECUTABLE target echo_server
-
-
-#############################################
-# Order-only phony target for echo_server
-
-build cmake_object_order_depends_target_echo_server: phony || cmake_object_order_depends_target_cyfon_rpc_lib
-
-build CMakeFiles\echo_server.dir\src\echo_server.cpp.obj: CXX_COMPILER__echo_server_unscanned_Debug D$:\cppsoft\Cyfon_RPC\src\echo_server.cpp || cmake_object_order_depends_target_echo_server
-  DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
-  INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
-  OBJECT_DIR = CMakeFiles\echo_server.dir
-  OBJECT_FILE_DIR = CMakeFiles\echo_server.dir\src
-  TARGET_COMPILE_PDB = CMakeFiles\echo_server.dir\
-  TARGET_PDB = echo_server.pdb
-
-build CMakeFiles\echo_server.dir\src\buffer.cpp.obj: CXX_COMPILER__echo_server_unscanned_Debug D$:\cppsoft\Cyfon_RPC\src\buffer.cpp || cmake_object_order_depends_target_echo_server
-  DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
-  INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
-  OBJECT_DIR = CMakeFiles\echo_server.dir
-  OBJECT_FILE_DIR = CMakeFiles\echo_server.dir\src
-  TARGET_COMPILE_PDB = CMakeFiles\echo_server.dir\
-  TARGET_PDB = echo_server.pdb
-
-build CMakeFiles\echo_server.dir\src\Session.cpp.obj: CXX_COMPILER__echo_server_unscanned_Debug D$:\cppsoft\Cyfon_RPC\src\Session.cpp || cmake_object_order_depends_target_echo_server
-  DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
-  INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
-  OBJECT_DIR = CMakeFiles\echo_server.dir
-  OBJECT_FILE_DIR = CMakeFiles\echo_server.dir\src
-  TARGET_COMPILE_PDB = CMakeFiles\echo_server.dir\
-  TARGET_PDB = echo_server.pdb
-
-build CMakeFiles\echo_server.dir\src\rpc_server.cpp.obj: CXX_COMPILER__echo_server_unscanned_Debug D$:\cppsoft\Cyfon_RPC\src\rpc_server.cpp || cmake_object_order_depends_target_echo_server
-  DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
-  INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
-  OBJECT_DIR = CMakeFiles\echo_server.dir
-  OBJECT_FILE_DIR = CMakeFiles\echo_server.dir\src
-  TARGET_COMPILE_PDB = CMakeFiles\echo_server.dir\
-  TARGET_PDB = echo_server.pdb
-
-
-# =============================================================================
-# Link build statements for EXECUTABLE target echo_server
-
-
-#############################################
-# Link the executable echo_server.exe
-
-build echo_server.exe: CXX_EXECUTABLE_LINKER__echo_server_Debug CMakeFiles\echo_server.dir\src\echo_server.cpp.obj CMakeFiles\echo_server.dir\src\buffer.cpp.obj CMakeFiles\echo_server.dir\src\Session.cpp.obj CMakeFiles\echo_server.dir\src\rpc_server.cpp.obj | cyfon_rpc_lib.lib D$:\vcpkg\installed\x64-windows\debug\lib\libprotobufd.lib D$:\vcpkg\installed\x64-windows\debug\lib\abseil_dll.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_date_time-vc143-mt-gd-x64-1_89.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_container-vc143-mt-gd-x64-1_89.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_context-vc143-mt-gd-x64-1_89.lib || cyfon_rpc_lib.lib
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -MDd
-  LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:console
-  LINK_LIBRARIES = cyfon_rpc_lib.lib  D:\vcpkg\installed\x64-windows\debug\lib\libprotobufd.lib  D:\vcpkg\installed\x64-windows\debug\lib\abseil_dll.lib  D:\vcpkg\installed\x64-windows\debug\lib\boost_date_time-vc143-mt-gd-x64-1_89.lib  D:\vcpkg\installed\x64-windows\debug\lib\boost_container-vc143-mt-gd-x64-1_89.lib  D:\vcpkg\installed\x64-windows\debug\lib\boost_context-vc143-mt-gd-x64-1_89.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
-  OBJECT_DIR = CMakeFiles\echo_server.dir
-  POST_BUILD = C:\WINDOWS\system32\cmd.exe /C "cd /D D:\cppsoft\Cyfon_RPC\out\build\x64-debug && C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -noprofile -executionpolicy Bypass -file D:/vcpkg/scripts/buildsystems/msbuild/applocal.ps1 -targetBinary D:/cppsoft/Cyfon_RPC/out/build/x64-debug/echo_server.exe -installedDir D:/vcpkg/installed/x64-windows/debug/bin -OutVariable out"
-  PRE_LINK = cd .
-  TARGET_COMPILE_PDB = CMakeFiles\echo_server.dir\
-  TARGET_FILE = echo_server.exe
-  TARGET_IMPLIB = echo_server.lib
-  TARGET_PDB = echo_server.pdb
-
-# =============================================================================
-# Object build statements for EXECUTABLE target echo_client
-
-
-#############################################
-# Order-only phony target for echo_client
-
-build cmake_object_order_depends_target_echo_client: phony || cmake_object_order_depends_target_cyfon_rpc_lib
-
-build CMakeFiles\echo_client.dir\src\echo_client.cpp.obj: CXX_COMPILER__echo_client_unscanned_Debug D$:\cppsoft\Cyfon_RPC\src\echo_client.cpp || cmake_object_order_depends_target_echo_client
-  DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
-  INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
-  OBJECT_DIR = CMakeFiles\echo_client.dir
-  OBJECT_FILE_DIR = CMakeFiles\echo_client.dir\src
-  TARGET_COMPILE_PDB = CMakeFiles\echo_client.dir\
-  TARGET_PDB = echo_client.pdb
-
-build CMakeFiles\echo_client.dir\src\buffer.cpp.obj: CXX_COMPILER__echo_client_unscanned_Debug D$:\cppsoft\Cyfon_RPC\src\buffer.cpp || cmake_object_order_depends_target_echo_client
-  DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
-  INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
-  OBJECT_DIR = CMakeFiles\echo_client.dir
-  OBJECT_FILE_DIR = CMakeFiles\echo_client.dir\src
-  TARGET_COMPILE_PDB = CMakeFiles\echo_client.dir\
-  TARGET_PDB = echo_client.pdb
-
-build CMakeFiles\echo_client.dir\src\Session.cpp.obj: CXX_COMPILER__echo_client_unscanned_Debug D$:\cppsoft\Cyfon_RPC\src\Session.cpp || cmake_object_order_depends_target_echo_client
-  DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
-  INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
-  OBJECT_DIR = CMakeFiles\echo_client.dir
-  OBJECT_FILE_DIR = CMakeFiles\echo_client.dir\src
-  TARGET_COMPILE_PDB = CMakeFiles\echo_client.dir\
-  TARGET_PDB = echo_client.pdb
-
-build CMakeFiles\echo_client.dir\src\rpc_server.cpp.obj: CXX_COMPILER__echo_client_unscanned_Debug D$:\cppsoft\Cyfon_RPC\src\rpc_server.cpp || cmake_object_order_depends_target_echo_client
-  DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
-  INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
-  OBJECT_DIR = CMakeFiles\echo_client.dir
-  OBJECT_FILE_DIR = CMakeFiles\echo_client.dir\src
-  TARGET_COMPILE_PDB = CMakeFiles\echo_client.dir\
-  TARGET_PDB = echo_client.pdb
-
-
-# =============================================================================
-# Link build statements for EXECUTABLE target echo_client
-
-
-#############################################
-# Link the executable echo_client.exe
-
-build echo_client.exe: CXX_EXECUTABLE_LINKER__echo_client_Debug CMakeFiles\echo_client.dir\src\echo_client.cpp.obj CMakeFiles\echo_client.dir\src\buffer.cpp.obj CMakeFiles\echo_client.dir\src\Session.cpp.obj CMakeFiles\echo_client.dir\src\rpc_server.cpp.obj | cyfon_rpc_lib.lib D$:\vcpkg\installed\x64-windows\debug\lib\libprotobufd.lib D$:\vcpkg\installed\x64-windows\debug\lib\abseil_dll.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_date_time-vc143-mt-gd-x64-1_89.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_container-vc143-mt-gd-x64-1_89.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_context-vc143-mt-gd-x64-1_89.lib || cyfon_rpc_lib.lib
-  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -MDd
-  LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:console
-  LINK_LIBRARIES = cyfon_rpc_lib.lib  D:\vcpkg\installed\x64-windows\debug\lib\libprotobufd.lib  D:\vcpkg\installed\x64-windows\debug\lib\abseil_dll.lib  D:\vcpkg\installed\x64-windows\debug\lib\boost_date_time-vc143-mt-gd-x64-1_89.lib  D:\vcpkg\installed\x64-windows\debug\lib\boost_container-vc143-mt-gd-x64-1_89.lib  D:\vcpkg\installed\x64-windows\debug\lib\boost_context-vc143-mt-gd-x64-1_89.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
-  OBJECT_DIR = CMakeFiles\echo_client.dir
-  POST_BUILD = C:\WINDOWS\system32\cmd.exe /C "cd /D D:\cppsoft\Cyfon_RPC\out\build\x64-debug && C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -noprofile -executionpolicy Bypass -file D:/vcpkg/scripts/buildsystems/msbuild/applocal.ps1 -targetBinary D:/cppsoft/Cyfon_RPC/out/build/x64-debug/echo_client.exe -installedDir D:/vcpkg/installed/x64-windows/debug/bin -OutVariable out"
-  PRE_LINK = cd .
-  TARGET_COMPILE_PDB = CMakeFiles\echo_client.dir\
-  TARGET_FILE = echo_client.exe
-  TARGET_IMPLIB = echo_client.lib
-  TARGET_PDB = echo_client.pdb
 
 # =============================================================================
 # Object build statements for EXECUTABLE target buffer_test
@@ -278,6 +157,15 @@ build CMakeFiles\buffer_test.dir\src\rpc_server.cpp.obj: CXX_COMPILER__buffer_te
   TARGET_COMPILE_PDB = CMakeFiles\buffer_test.dir\
   TARGET_PDB = buffer_test.pdb
 
+build CMakeFiles\buffer_test.dir\src\RpcClient.cpp.obj: CXX_COMPILER__buffer_test_unscanned_Debug D$:\cppsoft\Cyfon_RPC\src\RpcClient.cpp || cmake_object_order_depends_target_buffer_test
+  DEFINES = -DABSL_CONSUME_DLL -DBOOST_CONTAINER_DYN_LINK -DBOOST_CONTAINER_NO_LIB -DBOOST_CONTEXT_DYN_LINK="" -DBOOST_CONTEXT_EXPORT=EXPORT -DBOOST_CONTEXT_NO_LIB="" -DBOOST_DATE_TIME_DYN_LINK -DBOOST_DATE_TIME_NO_LIB -DPROTOBUF_USE_DLLS -D_WIN32_WINNT=0x0A00
+  FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -std:c++20 -MDd /utf-8
+  INCLUDES = -ID:\cppsoft\Cyfon_RPC\src -ID:\cppsoft\Cyfon_RPC\out\build\x64-debug -external:ID:\vcpkg\installed\x64-windows\include -external:W0
+  OBJECT_DIR = CMakeFiles\buffer_test.dir
+  OBJECT_FILE_DIR = CMakeFiles\buffer_test.dir\src
+  TARGET_COMPILE_PDB = CMakeFiles\buffer_test.dir\
+  TARGET_PDB = buffer_test.pdb
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target buffer_test
@@ -286,7 +174,7 @@ build CMakeFiles\buffer_test.dir\src\rpc_server.cpp.obj: CXX_COMPILER__buffer_te
 #############################################
 # Link the executable buffer_test.exe
 
-build buffer_test.exe: CXX_EXECUTABLE_LINKER__buffer_test_Debug CMakeFiles\buffer_test.dir\src\test.cpp.obj CMakeFiles\buffer_test.dir\src\Session.cpp.obj CMakeFiles\buffer_test.dir\src\rpc_server.cpp.obj | cyfon_rpc_lib.lib D$:\vcpkg\installed\x64-windows\debug\lib\libprotobufd.lib D$:\vcpkg\installed\x64-windows\debug\lib\abseil_dll.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_date_time-vc143-mt-gd-x64-1_89.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_container-vc143-mt-gd-x64-1_89.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_context-vc143-mt-gd-x64-1_89.lib || cyfon_rpc_lib.lib
+build buffer_test.exe: CXX_EXECUTABLE_LINKER__buffer_test_Debug CMakeFiles\buffer_test.dir\src\test.cpp.obj CMakeFiles\buffer_test.dir\src\Session.cpp.obj CMakeFiles\buffer_test.dir\src\rpc_server.cpp.obj CMakeFiles\buffer_test.dir\src\RpcClient.cpp.obj | cyfon_rpc_lib.lib D$:\vcpkg\installed\x64-windows\debug\lib\libprotobufd.lib D$:\vcpkg\installed\x64-windows\debug\lib\abseil_dll.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_date_time-vc143-mt-gd-x64-1_89.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_container-vc143-mt-gd-x64-1_89.lib D$:\vcpkg\installed\x64-windows\debug\lib\boost_context-vc143-mt-gd-x64-1_89.lib || cyfon_rpc_lib.lib
   FLAGS = /DWIN32 /D_WINDOWS /GR /EHsc /Zi /Ob0 /Od /RTC1 -MDd
   LINK_FLAGS = /machine:x64 /debug /INCREMENTAL /subsystem:console
   LINK_LIBRARIES = cyfon_rpc_lib.lib  D:\vcpkg\installed\x64-windows\debug\lib\libprotobufd.lib  D:\vcpkg\installed\x64-windows\debug\lib\abseil_dll.lib  D:\vcpkg\installed\x64-windows\debug\lib\boost_date_time-vc143-mt-gd-x64-1_89.lib  D:\vcpkg\installed\x64-windows\debug\lib\boost_container-vc143-mt-gd-x64-1_89.lib  D:\vcpkg\installed\x64-windows\debug\lib\boost_context-vc143-mt-gd-x64-1_89.lib  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib
@@ -323,11 +211,11 @@ build rebuild_cache: phony CMakeFiles\rebuild_cache.util
 
 
 #############################################
-# Custom command for echo.pb.h
+# Custom command for calu.pb.h
 
-build echo.pb.h echo.pb.cc | ${cmake_ninja_workdir}echo.pb.h ${cmake_ninja_workdir}echo.pb.cc: CUSTOM_COMMAND D$:\cppsoft\Cyfon_RPC\protocol\echo.proto
-  COMMAND = C:\WINDOWS\system32\cmd.exe /C "cd /D D:\cppsoft\Cyfon_RPC\out\build\x64-debug && D:\vcpkg\installed\x64-windows\tools\protobuf\protoc.exe --cpp_out :D:/cppsoft/Cyfon_RPC/out/build/x64-debug -I D:/cppsoft/Cyfon_RPC/protocol D:/cppsoft/Cyfon_RPC/protocol/echo.proto"
-  DESC = Running cpp protocol buffer compiler on D:/cppsoft/Cyfon_RPC/protocol/echo.proto
+build calu.pb.h calu.pb.cc | ${cmake_ninja_workdir}calu.pb.h ${cmake_ninja_workdir}calu.pb.cc: CUSTOM_COMMAND D$:\cppsoft\Cyfon_RPC\protocol\calu.proto
+  COMMAND = C:\WINDOWS\system32\cmd.exe /C "cd /D D:\cppsoft\Cyfon_RPC\out\build\x64-debug && D:\vcpkg\installed\x64-windows\tools\protobuf\protoc.exe --cpp_out :D:/cppsoft/Cyfon_RPC/out/build/x64-debug -I D:/cppsoft/Cyfon_RPC/protocol D:/cppsoft/Cyfon_RPC/protocol/calu.proto"
+  DESC = Running cpp protocol buffer compiler on D:/cppsoft/Cyfon_RPC/protocol/calu.proto
   restat = 1
 
 
@@ -346,10 +234,6 @@ build buffer_test: phony buffer_test.exe
 
 build cyfon_rpc_lib: phony cyfon_rpc_lib.lib
 
-build echo_client: phony echo_client.exe
-
-build echo_server: phony echo_server.exe
-
 # =============================================================================
 # Folder targets.
 
@@ -358,7 +242,7 @@ build echo_server: phony echo_server.exe
 #############################################
 # Folder: D:/cppsoft/Cyfon_RPC/out/build/x64-debug
 
-build all: phony cyfon_rpc_lib.lib echo_server.exe echo_client.exe buffer_test.exe
+build all: phony cyfon_rpc_lib.lib buffer_test.exe
 
 # =============================================================================
 # Built-in targets

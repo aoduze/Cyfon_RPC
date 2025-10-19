@@ -3,7 +3,8 @@
 #include <iostream>
 #include <boost/asio.hpp>
 #include "Session.h"
-#include "echo.pb.h"
+
+#include "calu.pb.h"
 
 class CalculatorServiceImpl : public cyfon_rpc::IService {
 public:
@@ -47,7 +48,7 @@ private:
 		acceptor_.async_accept(
 			[this](boost::system::error_code ec, boost::asio::ip::tcp::socket socket) {
 				if (!ec) {
-					std::make_shared<Session>(std::move(socket), rpc_server_)->start();
+					std::make_shared<Session>(std::move(socket), rpc_server_) -> start();
 				}
 				do_accept();
 			});
@@ -59,26 +60,35 @@ private:
 
 int main() {
 	try {
-		// 1. 初始化 Asio 上下文
-		boost::asio::io_context ioc_;
+		boost::asio::io_context ioc;
 
-		// 2. 创建 RPC 服务注册和分发中心
-		cyfon_rpc::RpcServer rpc_server;
+		cyfon_rpc::RpcServer rpc_server(std::thread::hardware_concurrency());
 
-		// 3. 注册 CalculatorService
+		// Register services.
 		uint32_t service_id = std::hash<std::string>{}("CalculatorService");
 		rpc_server.registerService(service_id, std::make_unique<CalculatorServiceImpl>());
 
-		// 4. 创建并启动 TCP 服务器，将 RpcServer 注入
 		short port = 8888;
 		std::cout << "Server starting on port " << port << "..." << std::endl;
-		TcpServer server(ioc_, port, rpc_server);
+		TcpServer server(ioc, port, rpc_server);
 
-		// 5. 运行事件循环
-		ioc_.run();
+		// Create a pool of I/O threads to run the asio event loop.
+		const size_t io_thread_count = std::max(1u, std::thread::hardware_concurrency());
+		std::vector<std::thread> io_threads;
+		io_threads.reserve(io_thread_count);
 
-	}
-	catch (std::exception& e) {
+		std::cout << "Starting " << io_thread_count << " I/O threads." << std::endl;
+		for (size_t i = 0; i < io_thread_count; ++i) {
+			io_threads.emplace_back([&ioc]() { ioc.run(); });
+		}
+
+		// Block the main thread by joining the I/O threads.
+		for (auto& t : io_threads) {
+			if (t.joinable()) {
+				t.join();
+			}
+		}
+	} catch (std::exception& e) {
 		std::cerr << "Exception: " << e.what() << std::endl;
 	}
 

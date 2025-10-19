@@ -31,3 +31,5 @@ service CalculatorService {
   // 定义方法 "Subtract"
   rpc Subtract(SubtractRequest) returns (SubtractResponse);
 }
+
+

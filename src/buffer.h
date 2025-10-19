@@ -265,7 +265,7 @@ namespace cyfon_rpc {
 	private:
 
 		char* begin() { return buffer_.data(); }
-		const char* begin() const { return &*buffer_.data(); }
+		const char* begin() const { return buffer_.data(); }
 
 		void makeSpace(size_t len) {
 			if (writableBytes() + prependableBytes() < len + kCheapPrepend) {

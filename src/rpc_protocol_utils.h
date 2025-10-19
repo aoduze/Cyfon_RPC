@@ -5,8 +5,6 @@
 #include <span>
 
 namespace cyfon_rpc {
-	
-	// 反序列化出header
 	inline bool deserialize_header(const Buffer& buffer, RpcHeader& header) {
 		if (buffer.readableBytes() < sizeof(header)) {
 			return false; 
@@ -24,7 +22,6 @@ namespace cyfon_rpc {
 		return true;
 	}
 
-	// 将 Header 安全地序列化到 Buffer 中 
 	inline void serialize_header(Buffer& buffer, const RpcHeader& header) {
 		RpcHeader network_header = header;
 
@@ -34,5 +31,17 @@ namespace cyfon_rpc {
 		network_header.method_id = hostToNetwork(network_header.method_id);
 
 		buffer.append({ reinterpret_cast<const char*>(&network_header), sizeof(network_header) });
+	}
+
+	// 插入buffer预制头部
+	inline void prepend_header(Buffer& buffer, const RpcHeader& header) {
+		RpcHeader network_header = header;
+
+		
+		network_header.message_size = hostToNetwork(network_header.message_size);
+		network_header.service_id = hostToNetwork(network_header.service_id);
+		network_header.method_id = hostToNetwork(network_header.method_id);
+
+		buffer.prepend(&network_header, sizeof(network_header));
 	}
 }
