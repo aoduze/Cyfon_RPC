@@ -45,7 +45,7 @@
 
 ## 4. 关键技术栈
 
-* **编程语言**: C++ (采用现代标准)
+* **编程语言**: C/C++ 
 * **网络库**: Boost.Asio
 * **序列化**: Google Protocol Buffers
 * **并发**: C++ 标准库 (`<thread>`, `<mutex>`, `<condition_variable>`, `<future>`)
