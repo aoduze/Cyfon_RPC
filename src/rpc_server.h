@@ -36,7 +36,7 @@ namespace cyfon_rpc {
 				auto it = services_.find(header.service_id);
 				std::string response_payload;
 				if (it != services_.end()) {
-					response_payload = it->second -> callMethod(header.method_id, body);
+					response_payload = it -> second -> callMethod(header.method_id, body);
 				}
 				else {
 					std::cerr << "error not found id" << std::endl;

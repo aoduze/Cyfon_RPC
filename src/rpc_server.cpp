@@ -64,7 +64,6 @@ int main() {
 
 		cyfon_rpc::RpcServer rpc_server(std::thread::hardware_concurrency());
 
-		// Register services.
 		uint32_t service_id = std::hash<std::string>{}("CalculatorService");
 		rpc_server.registerService(service_id, std::make_unique<CalculatorServiceImpl>());
 
@@ -72,8 +71,7 @@ int main() {
 		std::cout << "Server starting on port " << port << "..." << std::endl;
 		TcpServer server(ioc, port, rpc_server);
 
-		// Create a pool of I/O threads to run the asio event loop.
-		const size_t io_thread_count = std::max(1u, std::thread::hardware_concurrency());
+		const size_t io_thread_count = std::thread::hardware_concurrency();
 		std::vector<std::thread> io_threads;
 		io_threads.reserve(io_thread_count);
 
@@ -82,7 +80,6 @@ int main() {
 			io_threads.emplace_back([&ioc]() { ioc.run(); });
 		}
 
-		// Block the main thread by joining the I/O threads.
 		for (auto& t : io_threads) {
 			if (t.joinable()) {
 				t.join();

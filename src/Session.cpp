@@ -38,7 +38,7 @@ bool Session::processMessage() {
 	std::string payload = socketBuffer_.retrieveAsString(header.message_size - sizeof(cyfon_rpc::RpcHeader));
 	server_.enqueueTask(header, std::move(payload),
 		[self = shared_from_this()](std::span<const char> response_data) {
-			self->do_write(response_data);
+			self -> do_write(response_data);
 		});
 	return true;
 }

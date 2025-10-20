@@ -14,6 +14,8 @@ namespace cyfon_rpc {
 		void close();
 
 		Buffer send_receive(const Buffer& request_buffer);
+
+		Buffer receive_buffer();
 	private:
 		boost::asio::io_context& ioc_;
 		boost::asio::ip::tcp::socket socket_;
