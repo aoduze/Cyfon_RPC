@@ -10,14 +10,19 @@ namespace cyfon_rpc {
 			return false; 
 		}
 
-		// first·½·µ»ØÒ»¸öspan¶ÔÏó£¬±íÊ¾»º³åÇøÖĞÇ°sizeof(RpcHeader)¸ö×Ö½ÚµÄÊÓÍ¼
+		// firstæ–¹è¿”å›ä¸€ä¸ªspanå¯¹è±¡ï¼Œè¡¨ç¤ºç¼“å†²åŒºä¸­å‰sizeof(RpcHeader)ä¸ªå­—èŠ‚çš„è§†å›¾
 		auto header_view = buffer.readableBytesView().first(sizeof(RpcHeader));
 		std::memcpy(&header, header_view.data(), sizeof(RpcHeader));
 
-		// ¿ªÊ¼×ª»»×Ö½ÚĞò
+		// å¼€å§‹è½¬æ¢å­—èŠ‚åº
 		header.message_size = networkToHost(header.message_size);
 		header.method_id = networkToHost(header.method_id);
 		header.service_id = networkToHost(header.service_id);
+		header.request_id = networkToHost(header.request_id);
+		header.stream_id = networkToHost(header.stream_id);
+		header.sequence_number = networkToHost(header.sequence_number);
+		header.reserved = networkToHost(header.reserved);
+		// message_type å’Œ flags æ˜¯å•å­—èŠ‚ï¼Œä¸éœ€è¦è½¬æ¢
 
 		return true;
 	}
@@ -25,22 +30,31 @@ namespace cyfon_rpc {
 	inline void serialize_header(Buffer& buffer, const RpcHeader& header) {
 		RpcHeader network_header = header;
 
-		// ½«ËùÓĞ×Ö¶Î´ÓÖ÷»ú×Ö½ÚĞò×ª»»ÎªÍøÂç×Ö½ÚĞò
+		// å°†æ‰€æœ‰å­—æ®µä»ä¸»æœºå­—èŠ‚åºè½¬æ¢ä¸ºç½‘ç»œå­—èŠ‚åº
 		network_header.message_size = hostToNetwork(network_header.message_size);
 		network_header.service_id = hostToNetwork(network_header.service_id);
 		network_header.method_id = hostToNetwork(network_header.method_id);
+		network_header.request_id = hostToNetwork(network_header.request_id);
+		network_header.stream_id = hostToNetwork(network_header.stream_id);
+		network_header.sequence_number = hostToNetwork(network_header.sequence_number);
+		network_header.reserved = hostToNetwork(network_header.reserved);
+		// message_type å’Œ flags æ˜¯å•å­—èŠ‚ï¼Œä¸éœ€è¦è½¬æ¢
 
 		buffer.append({ reinterpret_cast<const char*>(&network_header), sizeof(network_header) });
 	}
 
-	// ²åÈëbufferÔ¤ÖÆÍ·²¿
+	// æ’å…¥bufferé¢„åˆ¶å¤´éƒ¨
 	inline void prepend_header(Buffer& buffer, const RpcHeader& header) {
 		RpcHeader network_header = header;
 
-		
 		network_header.message_size = hostToNetwork(network_header.message_size);
 		network_header.service_id = hostToNetwork(network_header.service_id);
 		network_header.method_id = hostToNetwork(network_header.method_id);
+		network_header.request_id = hostToNetwork(network_header.request_id);
+		network_header.stream_id = hostToNetwork(network_header.stream_id);
+		network_header.sequence_number = hostToNetwork(network_header.sequence_number);
+		network_header.reserved = hostToNetwork(network_header.reserved);
+		// message_type å’Œ flags æ˜¯å•å­—èŠ‚ï¼Œä¸éœ€è¦è½¬æ¢
 
 		buffer.prepend(&network_header, sizeof(network_header));
 	}

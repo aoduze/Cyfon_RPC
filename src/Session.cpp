@@ -1,6 +1,7 @@
 #include "Session.h"
 #include "rpc_server.h"
 #include "rpc_protocol_utils.h"
+#include "spdlog/spdlog.h"
 
 void Session::do_read() {
 	auto self = shared_from_this();
@@ -9,13 +10,19 @@ void Session::do_read() {
 		[this, self](boost::system::error_code ec, size_t length) {
 			if (!ec) {
 				socketBuffer_.hasWritten(length);
+				spdlog::debug("Socket read {} bytes.", length);
 				while (processMessage()) {
-					std::cout << "cerr" << std::endl;
+					spdlog::debug("Processed one complete message in buffer.");
 				}
 				do_read();
 			}
 			else {
-				std::cerr << "Read error: " << ec.message() << std::endl;
+				if (ec == boost::asio::error::eof) {
+					spdlog::info("Client disconnected gracefully. (EOF)");
+				}
+				else {
+					spdlog::error("Read error: {}", ec.message()); 
+				}
 			}
 		});
 }
@@ -51,7 +58,7 @@ void Session::do_write(std::span<const char> data) {
 		boost::asio::async_write(self->socket_, boost::asio::buffer(*shared_data),
 			[self, shared_data](boost::system::error_code ec, std::size_t /*length*/) {
 				if (ec) {
-					std::cerr << "Write error: " << ec.message() << std::endl;
+					spdlog::error("read error {}", ec.message());
 				}
 			});
 		});

@@ -3,6 +3,7 @@
 #include <iostream>
 #include <boost/asio.hpp>
 #include "Session.h"
+#include "spdlog/spdlog.h"
 
 #include "calu.pb.h"
 
@@ -68,14 +69,14 @@ int main() {
 		rpc_server.registerService(service_id, std::make_unique<CalculatorServiceImpl>());
 
 		short port = 8888;
-		std::cout << "Server starting on port " << port << "..." << std::endl;
+		spdlog::info("Server starting on port {} .....", port);
 		TcpServer server(ioc, port, rpc_server);
 
 		const size_t io_thread_count = std::thread::hardware_concurrency();
 		std::vector<std::thread> io_threads;
 		io_threads.reserve(io_thread_count);
 
-		std::cout << "Starting " << io_thread_count << " I/O threads." << std::endl;
+		spdlog::info("Starting {} I/O threads.", io_thread_count);
 		for (size_t i = 0; i < io_thread_count; ++i) {
 			io_threads.emplace_back([&ioc]() { ioc.run(); });
 		}
@@ -86,7 +87,7 @@ int main() {
 			}
 		}
 	} catch (std::exception& e) {
-		std::cerr << "Exception: " << e.what() << std::endl;
+		spdlog::error("Exception: {}", e.what());
 	}
 
 	google::protobuf::ShutdownProtobufLibrary();
