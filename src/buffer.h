@@ -134,7 +134,7 @@ namespace cyfon_rpc {
 		void retrieveInt64() { retrieve(sizeof(int64_t)); }
 		void retrieveInt32() { retrieve(sizeof(int32_t)); }
 		void retrieveInt16() { retrieve(sizeof(int16_t)); }
-		void retrieveInt8() { retrieve(sizeof(int8_t)); }
+		void retrieveInt8()  { retrieve(sizeof(int8_t)); }
 
 		// 丢弃所有可读数据
 		void retrieveAll() {

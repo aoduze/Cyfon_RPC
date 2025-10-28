@@ -5,24 +5,54 @@
 #include <iostream>
 #include "buffer.h"
 #include "rpc_header.h"
+#include <unordered_map>
+#include <mutex>
+#include <vector>
 
 class RpcServer;
 
 class Session : public std::enable_shared_from_this<Session> {
 public:
-	// ¹¹Ôìº¯ÊıÏÖÔÚĞèÒªÒıÓÃÁË£¬ÒòÎªÎÒÃÇĞèÒª·ÃÎÊ RpcServer µÄ³ÉÔ±
-	Session(boost::asio::ip::tcp::socket sock, cyfon_rpc::RpcServer& server) : socket_(std::move(sock)), server_(server) {}
+	Session(boost::asio::ip::tcp::socket sock, cyfon_rpc::RpcServer& server)
+		: socket_(std::move(sock)),
+		  server_(server),
+		  write_strand_(socket_.get_executor()),
+		  next_stream_id_(1) {}
 
 	void start() { do_read(); }
 
 private:
+	struct Stream {
+		uint32_t stream_id;					// æµID
+		uint32_t request_id;				// è¯·æ±‚ID
+		cyfon_rpc::MethodType method_type;  // æ–¹æ³•ç±»å‹
+		uint32_t service_id;				// æœåŠ¡ID	
+		uint32_t method_id;					// æ–¹æ³•ID
+		uint32_t sequence_number;			// æ¶ˆæ¯åºå·
+		bool is_active;						// æ˜¯å¦æ´»è·ƒ
+
+		// å®¢æˆ·ç«¯æµ: æ”¶é›†å®¢æˆ·ç«¯å‘é€æ¥çš„æµä¿¡æ¯
+		std::vector<std::string> collected_message;
+	};
+
 	void do_read();
 	bool processMessage();
 	void do_write(std::span<const char> data);
 
+	// æ¶ˆæ¯å¤„ç†æ–¹æ³•
+	void handleRequest(const cyfon_rpc::RpcHeader& header, const std::string& payload);
+	void handleStreamMessage(const cyfon_rpc::RpcHeader& header, const std::string& payload);
+
+	// æµç®¡ç†æ–¹æ³•
+	uint32_t createStream(const cyfon_rpc::RpcHeader& header);
+	void sendStreamMessage(uint32_t stream_id, const std::string& message, bool is_end = false);
+	void closeStream(uint32_t stream_id);
+
 	boost::asio::ip::tcp::socket socket_;
 	cyfon_rpc::Buffer socketBuffer_;
 	cyfon_rpc::RpcServer& server_;
-	// ¿ÉÒÔ°Ñstrand¿´×÷Ò»¸ö»º³å¶ÓÁĞÀ´Àí½â¼´¿É
 	boost::asio::strand<boost::asio::io_context::executor_type> write_strand_;
+	std::unordered_map<uint32_t, Stream> streams_;
+	uint32_t next_stream_id_;
+	std::mutex stream_mutex_;
 };

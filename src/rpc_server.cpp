@@ -31,7 +31,6 @@ public:
 
 			return res.SerializeAsString();
 		}
-
 		return "";
 	}
 };

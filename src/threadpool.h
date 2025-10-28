@@ -19,7 +19,6 @@ public:
 	explicit ThreadPool(size_t threads_count = std::thread::hardware_concurrency());
 	~ThreadPool();
 
-	// 禁止拷贝构造
 	ThreadPool(const ThreadPool&) = delete;
 	ThreadPool& operator=(const ThreadPool&) = delete;
 
@@ -30,15 +29,12 @@ public:
 private:
 	void worker_thread_loop();
 
-	// 线程容器与任务队列
 	std::vector<std::thread> workers_;
 	std::queue<std::function<void()>> tasks_;
 
-	// 同步原语
 	std::mutex queue_mutex_;
 	std::condition_variable condition_;
 
-	// 控制标识
 	std::atomic<bool> stop_; 
 };
 
@@ -81,12 +77,9 @@ inline void ThreadPool::worker_thread_loop() {
 				return;
 			}
 
-			// 从队列中取出一个任务
 			task = std::move(this -> tasks_.front());
 			this -> tasks_.pop();
 		}
-
-		// 执行任务
 
 		if (task) {
 			task();
@@ -98,14 +91,12 @@ template <class F, class... Args>
 auto ThreadPool::enqueue(F&& f, Args&&... args)
   -> std::future<std::invoke_result_t<F, Args...>> {
 	
-	// 推断任务的返回类型
 	using return_type = std::invoke_result_t<F, Args...>;
 
 	if (stop_.load()) {
 		throw std::runtime_error("enqueue on stopped ThreadPool");
 	}
 
-	// 创建一个打包任务
 	auto task = std::make_shared<std::packaged_task<return_type()>>(
 		[func = std::forward<F>(f), t = std::make_tuple(std::forward<Args>(args)...)]() mutable -> return_type {
 			return std::apply(std::move(func), std::move(t));
@@ -124,7 +115,6 @@ auto ThreadPool::enqueue(F&& f, Args&&... args)
 		tasks_.emplace([task]() { (*task)(); });
 	}
 
-	// 通知一个等待的线程
 	condition_.notify_one();
 	return res;
 }
