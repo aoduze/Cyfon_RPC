@@ -24,6 +24,7 @@ namespace cyfon_rpc {
 	public:
 		using SendCallback = std::function<void(std::span<const char>)>;
 		using FinishCallback = std::function<void()>;
+		
 
 		StreamContext(SendCallback send, FinishCallback finish)
 			: send_(send), finish_(finish) {}
@@ -65,7 +66,7 @@ namespace cyfon_rpc {
 		virtual std::string callClientStreaming(
 			uint32_t method_id,
 			const std::vector<std::string>& requests
-		) { return ""; }
+		) { return " "; }
 
 		// 双向
 		virtual void callBidirectionalStreaming(

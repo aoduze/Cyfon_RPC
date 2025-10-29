@@ -84,7 +84,7 @@ void Session::do_write(std::span<const char> data) {
 }
 
 void Session::handleRequest(const cyfon_rpc::RpcHeader& header, const std::string& payload) {
-	auto method_type = sercer_.getService(header.service_id);
+	auto service= server_.getService(header.service_id);
 	if(!service) {
 		spdlog::error(" Service not found : {}", header.service_id);
 		return;
@@ -101,18 +101,18 @@ void Session::handleRequest(const cyfon_rpc::RpcHeader& header, const std::strin
 				self -> do_write(response_data);
 			});
 	}
-	else if (method_type = cyfon_rpc::Methodtype::SERVER_STREAMING) {
+	else if (method_type == cyfon_rpc::MethodType::SERVER_STREAMING) {
 		// 服务端流式
 		uint32_t stream_id = createStream(header);
 
 		spdlog::info("Created server streaming, stream_id={}, method_id={}",
 					stream_id, header.method_id);
 
-		StreamContext stream_ctx(
-			[self, stream_id] (message) {
+		cyfon_rpc::StreamContext stream_ctx(
+			[self = shared_from_this(), stream_id] (const std::string&message) {
 				self -> sendStreamMessage(stream_id, message);
 			},
-			[self, stream_id]() {
+			[self = shared_from_this(), stream_id]() {
 				self -> closeStream(stream_id);
 			});
 		
@@ -120,6 +120,12 @@ void Session::handleRequest(const cyfon_rpc::RpcHeader& header, const std::strin
 	} 
 	else if (method_type == cyfon_rpc::MethodType::BIDIRECTIONAL) {
 		spdlog::warn("Bidirectional streaming not implemented yet");
+	}
+	else if(method_type == cyfon_rpc::MethodType::CLIENT_STREAMING) {
+		// 客户端流式
+		uint32_t stream_id = createStream(header);
+		spdlog::info("Created client streaming, stream_id = {}, method_id = {}",
+			stream_id, header.method_id);
 	}
 }
 
@@ -139,6 +145,102 @@ void Session::handleStreamMessage(const cyfon_rpc::RpcHeader& header, const std:
 	// 根据流方法推断
 	if (stream.method_type == cyfon_rpc::MethodType::CLIENT_STREAMING) {
 		stream.collected_message.push_back(payload);
+		stream.sequence_number++;
+
+		// 检查是不是最后一条消息
+		if(header.flags & cyfon_rpc::Flag::STREAM_END) {
+			spdlog::info("Client streaming finished, stream_id= {}, total message = {}",
+				header.stream_id, stream.collected_message.size());
+			
+			auto service = server_.getService(stream.service_id);
+			if (service) {
+				std::string response = service -> callClientStreaming(
+					stream.method_id,
+					stream.collected_message
+				);
+
+				cyfon_rpc::Buffer response_buffer;
+				response_buffer.append(response);
+
+				cyfon_rpc::RpcHeader response_header;
+                response_header.message_size = sizeof(cyfon_rpc::RpcHeader) + response.size();
+                response_header.service_id = stream.service_id;
+                response_header.method_id = stream.method_id;
+                response_header.request_id = stream.request_id;
+                response_header.stream_id = stream.stream_id;
+                response_header.sequence_number = 0;
+                response_header.message_type = static_cast<uint8_t>(cyfon_rpc::MessageType::RESPONSE);
+                response_header.flags = cyfon_rpc::Flag::NONE;
+                response_header.reserved = 0;
+
+				cyfon_rpc::prepend_header(response_buffer, response_header);
+				self -> do_write(response_buffer.readableBytesView());
+			}
+			closeStream(header.stream_id);
+		}
+	}
+	else if (stream.method_type == cyfon_rpc::MethodType::BIDIRECTIONAL) {
+		spdlog::warn("Bidirectional streaming not implemented yet");
+	}
+}
+
+uint32_t Session::createStream(const cyfon_rpc::RpcHeader& header) {
+	std::lock_guard<std::mutex> lock(stream_mutex_);
+
+	uint32_t stream_id = next_stream_id_++;
+
+	Stream stream;
+	stream.stream_id = stream_id;
+	stream.request_id = header.request_id;
+	stream.method_type = server_.getMethodType(header.service_id) -> getMethodType(header.method_id);
+	stream.service_id = header.service_id;
+	stream.method_id = header.method_id;
+	stream.is_active = true;
+
+	streams_[stream_id] = stream;
+	return stream_id;
+}
+
+void Session::sendStreamMessage(uint32_t stream_id, const std::string& message, bool is_end) {
+	std::lock_guard<std::mutex> lock(stream_mutex_);
+
+	auto it = streams_.find(stream_id);
+	if (it == streams.end()) {
+		spdlog::warn("Cannot send message: stream not found {}", stream_id);
+		return;
+	}
+
+	auto& stream = it -> second;
+	stream.sequence_number++;
+
+	cyfon_rpc::Buffer buffer;
+	buffer.append(message);
+
+	cyfon_rpc::RpcHeader header;
+	header.message_size = sizeof(cyfon_rpc::RpcHeader) + message.size();
+	header.service_id = stream.service_id;
+	header.method_id = stream.method_id;
+	header.request_id = stream.request_id;
+	header.stream_id = stream.stream_id;
+	header.sequence_number = stream.sequence_number;
+	header.message_type = static_cast<uint8_t>(cyfon_rpc::MessageType::STREAM);
+	header.flags = is_end ? cyfon_rpc::Flag::STREAM_END : cyfon_rpc::Flag::NONE;
+	header.reserved = 0;
+
+	cyfon_rpc::prepend_header(buffer, header);
+	do_write(buffer.readableBytesView());
+
+	spdlog::debug("Sent stream message, stream_id={}, sequence_number={}, is_end={}",
+		 stream_id, stream.sequence_number, is_end);
+}
+
+void Session::closeStream(uint32_t stream_id) {
+	std::lock_guard<std::mutex> lock(stream_mutex_);
+
+	auto it = streams_find(stream_id);
+	if(it != streams_.end()) {
+		spdlog::info("Closed stream, stream_id={}", stream_id);
+		streams_.erase(it);
 	}
 }
 
